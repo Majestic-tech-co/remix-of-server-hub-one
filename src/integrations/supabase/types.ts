@@ -14,7 +14,154 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commands: {
+        Row: {
+          command: string
+          completed_at: string | null
+          created_at: string
+          exit_code: number | null
+          id: string
+          server_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["command_status"]
+          stderr: string | null
+          stdout: string | null
+          user_id: string
+        }
+        Insert: {
+          command: string
+          completed_at?: string | null
+          created_at?: string
+          exit_code?: number | null
+          id?: string
+          server_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["command_status"]
+          stderr?: string | null
+          stdout?: string | null
+          user_id: string
+        }
+        Update: {
+          command?: string
+          completed_at?: string | null
+          created_at?: string
+          exit_code?: number | null
+          id?: string
+          server_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["command_status"]
+          stderr?: string | null
+          stdout?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commands_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      metrics: {
+        Row: {
+          cpu_percent: number | null
+          disk_percent: number | null
+          disk_total_gb: number | null
+          disk_used_gb: number | null
+          id: number
+          load_1: number | null
+          memory_percent: number | null
+          memory_total_mb: number | null
+          memory_used_mb: number | null
+          net_rx_kbs: number | null
+          net_tx_kbs: number | null
+          recorded_at: string
+          server_id: string
+          uptime_seconds: number | null
+        }
+        Insert: {
+          cpu_percent?: number | null
+          disk_percent?: number | null
+          disk_total_gb?: number | null
+          disk_used_gb?: number | null
+          id?: number
+          load_1?: number | null
+          memory_percent?: number | null
+          memory_total_mb?: number | null
+          memory_used_mb?: number | null
+          net_rx_kbs?: number | null
+          net_tx_kbs?: number | null
+          recorded_at?: string
+          server_id: string
+          uptime_seconds?: number | null
+        }
+        Update: {
+          cpu_percent?: number | null
+          disk_percent?: number | null
+          disk_total_gb?: number | null
+          disk_used_gb?: number | null
+          id?: number
+          load_1?: number | null
+          memory_percent?: number | null
+          memory_total_mb?: number | null
+          memory_used_mb?: number | null
+          net_rx_kbs?: number | null
+          net_tx_kbs?: number | null
+          recorded_at?: string
+          server_id?: string
+          uptime_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          agent_token: string
+          created_at: string
+          hostname: string | null
+          id: string
+          ip_address: string | null
+          last_seen_at: string | null
+          name: string
+          os: string | null
+          tags: string[]
+          user_id: string
+        }
+        Insert: {
+          agent_token?: string
+          created_at?: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string | null
+          name: string
+          os?: string | null
+          tags?: string[]
+          user_id: string
+        }
+        Update: {
+          agent_token?: string
+          created_at?: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string | null
+          name?: string
+          os?: string | null
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +170,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      command_status: "pending" | "running" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +297,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      command_status: ["pending", "running", "completed", "failed"],
+    },
   },
 } as const
