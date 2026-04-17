@@ -9,38 +9,114 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ServersIdRouteImport } from './routes/servers.$id'
+import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
+import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
+import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServersIdRoute = ServersIdRouteImport.update({
+  id: '/servers/$id',
+  path: '/servers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentMetricsRoute = ApiAgentMetricsRouteImport.update({
+  id: '/api/agent/metrics',
+  path: '/api/agent/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentInstallRoute = ApiAgentInstallRouteImport.update({
+  id: '/api/agent/install',
+  path: '/api/agent/install',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentCommandResultRoute = ApiAgentCommandResultRouteImport.update({
+  id: '/api/agent/command-result',
+  path: '/api/agent/command-result',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-result': typeof ApiAgentCommandResultRoute
+  '/api/agent/install': typeof ApiAgentInstallRoute
+  '/api/agent/metrics': typeof ApiAgentMetricsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-result': typeof ApiAgentCommandResultRoute
+  '/api/agent/install': typeof ApiAgentInstallRoute
+  '/api/agent/metrics': typeof ApiAgentMetricsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-result': typeof ApiAgentCommandResultRoute
+  '/api/agent/install': typeof ApiAgentInstallRoute
+  '/api/agent/metrics': typeof ApiAgentMetricsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/servers/$id'
+    | '/api/agent/command-result'
+    | '/api/agent/install'
+    | '/api/agent/metrics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/servers/$id'
+    | '/api/agent/command-result'
+    | '/api/agent/install'
+    | '/api/agent/metrics'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/servers/$id'
+    | '/api/agent/command-result'
+    | '/api/agent/install'
+    | '/api/agent/metrics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ServersIdRoute: typeof ServersIdRoute
+  ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
+  ApiAgentInstallRoute: typeof ApiAgentInstallRoute
+  ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +124,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/servers/$id': {
+      id: '/servers/$id'
+      path: '/servers/$id'
+      fullPath: '/servers/$id'
+      preLoaderRoute: typeof ServersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/metrics': {
+      id: '/api/agent/metrics'
+      path: '/api/agent/metrics'
+      fullPath: '/api/agent/metrics'
+      preLoaderRoute: typeof ApiAgentMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/install': {
+      id: '/api/agent/install'
+      path: '/api/agent/install'
+      fullPath: '/api/agent/install'
+      preLoaderRoute: typeof ApiAgentInstallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/command-result': {
+      id: '/api/agent/command-result'
+      path: '/api/agent/command-result'
+      fullPath: '/api/agent/command-result'
+      preLoaderRoute: typeof ApiAgentCommandResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ServersIdRoute: ServersIdRoute,
+  ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
+  ApiAgentInstallRoute: ApiAgentInstallRoute,
+  ApiAgentMetricsRoute: ApiAgentMetricsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
