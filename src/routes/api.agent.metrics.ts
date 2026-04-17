@@ -63,7 +63,12 @@ export const Route = createFileRoute("/api/agent/metrics")({
         }
 
         // Update server inventory + last_seen
-        const updates: Record<string, unknown> = { last_seen_at: new Date().toISOString() };
+        const updates: {
+          last_seen_at: string;
+          hostname?: string;
+          ip_address?: string;
+          os?: string;
+        } = { last_seen_at: new Date().toISOString() };
         if (data.hostname) updates.hostname = data.hostname;
         if (data.ip) updates.ip_address = data.ip;
         if (data.os) updates.os = data.os;
