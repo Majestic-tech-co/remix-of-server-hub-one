@@ -134,7 +134,7 @@ while true; do
     [ -n "$id" ] && run_command "$id" "$cmd"
   done
 
-  sleep 60
+  sleep 15
 done
 AGENT
 chmod +x "$INSTALL_DIR/agent.sh"
