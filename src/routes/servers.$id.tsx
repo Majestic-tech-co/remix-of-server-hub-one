@@ -12,9 +12,13 @@ import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, Play, RefreshCw, Termi
 import {
   Area,
   AreaChart,
+  Brush,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
+  type TooltipProps,
   XAxis,
   YAxis,
 } from "recharts";
