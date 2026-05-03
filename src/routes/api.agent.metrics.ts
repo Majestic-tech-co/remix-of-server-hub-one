@@ -48,7 +48,8 @@ export const Route = createFileRoute("/api/agent/metrics")({
         }
         const parsed = Schema.safeParse(body);
         if (!parsed.success) {
-          return Response.json({ error: "invalid payload", details: parsed.error.issues }, { status: 400, headers: corsHeaders });
+          console.warn("metrics ingest invalid payload", parsed.error.issues);
+          return Response.json({ error: "invalid payload" }, { status: 400, headers: corsHeaders });
         }
         const data = parsed.data;
 
