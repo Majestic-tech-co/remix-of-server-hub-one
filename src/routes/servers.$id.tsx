@@ -12,9 +12,13 @@ import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, Play, RefreshCw, Termi
 import {
   Area,
   AreaChart,
+  Brush,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
+  type TooltipProps,
   XAxis,
   YAxis,
 } from "recharts";
@@ -86,17 +90,20 @@ function ServerDetail() {
   const [commands, setCommands] = useState<CommandRow[]>([]);
   const [cmdInput, setCmdInput] = useState("");
   const [running, setRunning] = useState(false);
+  const [rangeMin, setRangeMin] = useState<number>(60);
 
   const loadAll = async () => {
     if (!user) return;
+    const since = new Date(Date.now() - rangeMin * 60 * 1000).toISOString();
     const [{ data: s }, { data: m }, { data: c }] = await Promise.all([
       supabase.from("servers").select("*").eq("id", id).single(),
       supabase
         .from("metrics")
         .select("*")
         .eq("server_id", id)
-        .gte("recorded_at", new Date(Date.now() - 60 * 60 * 1000).toISOString())
-        .order("recorded_at", { ascending: true }),
+        .gte("recorded_at", since)
+        .order("recorded_at", { ascending: true })
+        .limit(5000),
       supabase
         .from("commands")
         .select("*")
@@ -114,22 +121,48 @@ function ServerDetail() {
     const i = setInterval(loadAll, 8000);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user]);
+  }, [id, user, rangeMin]);
 
   const latest = metrics[metrics.length - 1];
   const online = server?.last_seen_at && Date.now() - new Date(server.last_seen_at).getTime() < 90_000;
 
-  const chartData = useMemo(() =>
-    metrics.map((m) => ({
+  // Real timestamp x-axis with gap detection. If two consecutive samples are
+  // farther apart than 3× the median interval, insert a null point so charts
+  // visibly break instead of interpolating across missing data.
+  const chartData = useMemo(() => {
+    if (metrics.length === 0) return [] as ChartPoint[];
+    const points: ChartPoint[] = metrics.map((m) => ({
       t: new Date(m.recorded_at).getTime(),
-      label: new Date(m.recorded_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       cpu: m.cpu_percent == null ? null : Number(m.cpu_percent),
       mem: m.memory_percent == null ? null : Number(m.memory_percent),
+      memUsed: m.memory_used_mb == null ? null : Number(m.memory_used_mb),
       disk: m.disk_percent == null ? null : Number(m.disk_percent),
+      diskUsed: m.disk_used_gb == null ? null : Number(m.disk_used_gb),
       rx: m.net_rx_kbs == null ? null : Number(m.net_rx_kbs),
       tx: m.net_tx_kbs == null ? null : Number(m.net_tx_kbs),
-    })),
-  [metrics]);
+      load: m.load_1 == null ? null : Number(m.load_1),
+    }));
+    const deltas: number[] = [];
+    for (let i = 1; i < points.length; i++) deltas.push(points[i].t - points[i - 1].t);
+    deltas.sort((a, b) => a - b);
+    const median = deltas.length ? deltas[Math.floor(deltas.length / 2)] : 60_000;
+    const gap = Math.max(median * 3, 90_000);
+    const out: ChartPoint[] = [];
+    for (let i = 0; i < points.length; i++) {
+      if (i > 0 && points[i].t - points[i - 1].t > gap) {
+        out.push({ t: points[i - 1].t + 1, cpu: null, mem: null, memUsed: null, disk: null, diskUsed: null, rx: null, tx: null, load: null });
+      }
+      out.push(points[i]);
+    }
+    return out;
+  }, [metrics]);
+
+  const domain = useMemo<[number, number]>(() => {
+    const end = Date.now();
+    return [end - rangeMin * 60 * 1000, end];
+  }, [rangeMin, metrics.length]);
+
+  const ticks = useMemo(() => makeTicks(domain[0], domain[1], 6), [domain]);
 
   const submitCommand = async (cmd: string) => {
     if (!user || !cmd.trim()) return;
@@ -152,6 +185,17 @@ function ServerDetail() {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
 
+  const ranges = [
+    { label: "15m", min: 15 },
+    { label: "1h", min: 60 },
+    { label: "6h", min: 360 },
+    { label: "24h", min: 1440 },
+    { label: "7d", min: 60 * 24 * 7 },
+  ];
+
+  const memTotalMb = latest?.memory_total_mb ? Number(latest.memory_total_mb) : null;
+  const diskTotalGb = latest?.disk_total_gb ? Number(latest.disk_total_gb) : null;
+
   return (
     <div className="space-y-8">
       <div>
@@ -173,6 +217,7 @@ function ServerDetail() {
                   <Clock className="h-3 w-3" /> last seen {timeAgo(server.last_seen_at)}
                 </span>
               )}
+              <span>· {metrics.length} samples</span>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={loadAll}>
@@ -181,12 +226,11 @@ function ServerDetail() {
         </div>
       </div>
 
-      {/* Live tiles */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile icon={<Cpu className="h-4 w-4" />} label="CPU" value={fmtPct(latest?.cpu_percent)} sub={latest?.load_1 != null ? `load ${Number(latest.load_1).toFixed(2)}` : undefined} />
         <Tile icon={<MemoryStick className="h-4 w-4" />} label="Memory" value={fmtPct(latest?.memory_percent)} sub={latest?.memory_used_mb != null && latest?.memory_total_mb != null ? `${fmtMb(latest.memory_used_mb)} / ${fmtMb(latest.memory_total_mb)}` : undefined} />
         <Tile icon={<HardDrive className="h-4 w-4" />} label="Disk" value={fmtPct(latest?.disk_percent)} sub={latest?.disk_used_gb != null && latest?.disk_total_gb != null ? `${Number(latest.disk_used_gb).toFixed(1)}G / ${Number(latest.disk_total_gb).toFixed(1)}G` : undefined} />
-        <Tile icon={<Network className="h-4 w-4" />} label="Network" value={latest?.net_rx_kbs != null ? `${Math.round(Number(latest.net_rx_kbs))} kB/s` : "—"} sub={latest?.net_tx_kbs != null ? `↑ ${Math.round(Number(latest.net_tx_kbs))} kB/s` : undefined} />
+        <Tile icon={<Network className="h-4 w-4" />} label="Network" value={latest?.net_rx_kbs != null ? fmtKbps(Number(latest.net_rx_kbs)) : "—"} sub={latest?.net_tx_kbs != null ? `↑ ${fmtKbps(Number(latest.net_tx_kbs))}` : undefined} />
       </div>
 
       <Tabs defaultValue="charts">
@@ -196,54 +240,99 @@ function ServerDetail() {
         </TabsList>
 
         <TabsContent value="charts" className="mt-6 space-y-4">
-          <Card className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">CPU / Memory / Disk · last hour</div>
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer>
-                <AreaChart data={chartData} margin={{ left: -10, right: 10, top: 5, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="g-cpu" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.78 0.18 145)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="oklch(0.78 0.18 145)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="g-mem" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="g-disk" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.82 0.17 75)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="oklch(0.82 0.17 75)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="oklch(0.3 0.02 250)" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" stroke="oklch(0.65 0.02 250)" fontSize={10} tickLine={false} axisLine={false} minTickGap={40} />
-                  <YAxis stroke="oklch(0.65 0.02 250)" fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} unit="%" width={40} />
-                  <Tooltip contentStyle={{ background: "oklch(0.22 0.018 250)", border: "1px solid oklch(0.3 0.02 250)", borderRadius: 8, fontSize: 12 }} />
-                  <Area type="monotone" dataKey="cpu" name="CPU %" stroke="oklch(0.78 0.18 145)" strokeWidth={2} fill="url(#g-cpu)" />
-                  <Area type="monotone" dataKey="mem" name="Memory %" stroke="oklch(0.7 0.18 220)" strokeWidth={2} fill="url(#g-mem)" />
-                  <Area type="monotone" dataKey="disk" name="Disk %" stroke="oklch(0.82 0.17 75)" strokeWidth={2} fill="url(#g-disk)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <div className="flex flex-wrap items-center gap-1 rounded-md border border-border p-1 w-fit">
+            {ranges.map((r) => (
+              <button
+                key={r.label}
+                onClick={() => setRangeMin(r.min)}
+                className={`rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+                  rangeMin === r.min ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
 
-          <Card className="p-5">
-            <div className="mb-3 font-mono text-xs uppercase tracking-widest text-muted-foreground">Network · last hour</div>
-            <div className="h-48">
-              <ResponsiveContainer>
-                <AreaChart data={chartData} margin={{ left: -10, right: 10, top: 5, bottom: 0 }}>
-                  <CartesianGrid stroke="oklch(0.3 0.02 250)" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" stroke="oklch(0.65 0.02 250)" fontSize={10} tickLine={false} axisLine={false} minTickGap={40} />
-                  <YAxis stroke="oklch(0.65 0.02 250)" fontSize={10} tickLine={false} axisLine={false} width={50} unit=" kB" />
-                  <Tooltip contentStyle={{ background: "oklch(0.22 0.018 250)", border: "1px solid oklch(0.3 0.02 250)", borderRadius: 8, fontSize: 12 }} />
-                  <Area type="monotone" dataKey="rx" name="Rx kB/s" stroke="oklch(0.7 0.16 300)" strokeWidth={2} fill="oklch(0.7 0.16 300 / 0.2)" />
-                  <Area type="monotone" dataKey="tx" name="Tx kB/s" stroke="oklch(0.65 0.22 25)" strokeWidth={2} fill="oklch(0.65 0.22 25 / 0.2)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+          <ChartCard title={`CPU · last ${labelFor(rangeMin)}`}>
+            <ResponsiveContainer>
+              <AreaChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="g-cpu" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.78 0.18 145)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="oklch(0.78 0.18 145)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                {commonGrid()}
+                <XAxis {...xAxisProps(domain, ticks)} />
+                <YAxis {...yAxisProps()} domain={[0, 100]} unit="%" width={42} />
+                <Tooltip content={<DetailTooltip unit="%" />} />
+                <Area type="linear" dataKey="cpu" name="CPU" stroke="oklch(0.78 0.18 145)" strokeWidth={1.5} fill="url(#g-cpu)" isAnimationActive={false} dot={false} connectNulls={false} />
+                <Brush dataKey="t" height={20} travellerWidth={8} stroke="oklch(0.4 0.02 250)" fill="oklch(0.18 0.018 250)" tickFormatter={(v) => fmtTimeShort(Number(v))} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Load average (1m)">
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                {commonGrid()}
+                <XAxis {...xAxisProps(domain, ticks)} />
+                <YAxis {...yAxisProps()} width={42} domain={[0, "auto"]} />
+                <Tooltip content={<DetailTooltip />} />
+                <Line type="linear" dataKey="load" name="Load" stroke="oklch(0.75 0.18 60)" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title={`Memory${memTotalMb ? ` · ${fmtMb(memTotalMb)} total` : ""}`}>
+            <ResponsiveContainer>
+              <AreaChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="g-mem" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="oklch(0.7 0.18 220)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                {commonGrid()}
+                <XAxis {...xAxisProps(domain, ticks)} />
+                <YAxis {...yAxisProps()} width={56} domain={[0, memTotalMb ?? "auto"]} tickFormatter={(v) => fmtMb(Number(v))} />
+                <Tooltip content={<DetailTooltip valueFormatter={(v) => fmtMb(v)} />} />
+                <Area type="linear" dataKey="memUsed" name="Used" stroke="oklch(0.7 0.18 220)" strokeWidth={1.5} fill="url(#g-mem)" isAnimationActive={false} dot={false} connectNulls={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title={`Disk${diskTotalGb ? ` · ${diskTotalGb.toFixed(1)} GB total` : ""}`}>
+            <ResponsiveContainer>
+              <AreaChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="g-disk" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.82 0.17 75)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="oklch(0.82 0.17 75)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                {commonGrid()}
+                <XAxis {...xAxisProps(domain, ticks)} />
+                <YAxis {...yAxisProps()} width={52} domain={[0, diskTotalGb ?? "auto"]} tickFormatter={(v) => `${Number(v).toFixed(0)}G`} />
+                <Tooltip content={<DetailTooltip valueFormatter={(v) => `${v.toFixed(2)} GB`} />} />
+                <Area type="linear" dataKey="diskUsed" name="Used" stroke="oklch(0.82 0.17 75)" strokeWidth={1.5} fill="url(#g-disk)" isAnimationActive={false} dot={false} connectNulls={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Network throughput">
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
+                {commonGrid()}
+                <XAxis {...xAxisProps(domain, ticks)} />
+                <YAxis {...yAxisProps()} width={68} tickFormatter={(v) => fmtKbps(Number(v))} domain={[0, "auto"]} />
+                <Tooltip content={<DetailTooltip valueFormatter={(v) => fmtKbps(v)} />} />
+                <Line type="linear" dataKey="rx" name="↓ Rx" stroke="oklch(0.7 0.16 300)" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+                <Line type="linear" dataKey="tx" name="↑ Tx" stroke="oklch(0.65 0.22 25)" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
         </TabsContent>
 
         <TabsContent value="commands" className="mt-6 space-y-4">
@@ -292,6 +381,120 @@ function ServerDetail() {
       </Tabs>
     </div>
   );
+}
+
+interface ChartPoint {
+  t: number;
+  cpu: number | null;
+  mem: number | null;
+  memUsed: number | null;
+  disk: number | null;
+  diskUsed: number | null;
+  rx: number | null;
+  tx: number | null;
+  load: number | null;
+}
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card className="p-5">
+      <div className="mb-3 font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
+      <div className="h-56">{children}</div>
+    </Card>
+  );
+}
+
+function commonGrid() {
+  return <CartesianGrid stroke="oklch(0.3 0.02 250)" strokeDasharray="3 3" vertical={false} />;
+}
+
+function xAxisProps(domain: [number, number], ticks: number[]) {
+  return {
+    dataKey: "t" as const,
+    type: "number" as const,
+    scale: "time" as const,
+    domain,
+    ticks,
+    stroke: "oklch(0.65 0.02 250)",
+    fontSize: 10,
+    tickLine: false,
+    axisLine: false,
+    tickFormatter: (v: number) => fmtTickFor(domain, v),
+    minTickGap: 24,
+  };
+}
+
+function yAxisProps() {
+  return {
+    stroke: "oklch(0.65 0.02 250)",
+    fontSize: 10,
+    tickLine: false,
+    axisLine: false,
+  };
+}
+
+function DetailTooltip({
+  active,
+  payload,
+  label,
+  unit,
+  valueFormatter,
+}: TooltipProps<number, string> & { unit?: string; valueFormatter?: (v: number) => string }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const t = typeof label === "number" ? label : Number(label);
+  return (
+    <div className="rounded-md border border-border/60 bg-background/95 px-3 py-2 font-mono text-[11px] shadow-xl backdrop-blur">
+      <div className="mb-1 text-muted-foreground">{fmtTimeFull(t)}</div>
+      {payload.map((p) => {
+        const v = p.value as number | null | undefined;
+        if (v == null) return null;
+        const formatted = valueFormatter ? valueFormatter(Number(v)) : `${Number(v).toFixed(2)}${unit ?? ""}`;
+        return (
+          <div key={String(p.dataKey)} className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: p.color }} />
+            <span className="text-muted-foreground">{p.name}</span>
+            <span className="ml-auto tabular-nums text-foreground">{formatted}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function makeTicks(start: number, end: number, count: number) {
+  const step = (end - start) / count;
+  const out: number[] = [];
+  for (let i = 0; i <= count; i++) out.push(Math.round(start + step * i));
+  return out;
+}
+
+function fmtTickFor(domain: [number, number], v: number) {
+  const span = domain[1] - domain[0];
+  const d = new Date(v);
+  if (span <= 24 * 60 * 60 * 1000) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString([], { month: "short", day: "2-digit" }) + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtTimeShort(v: number) {
+  return new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtTimeFull(v: number) {
+  return new Date(v).toLocaleString([], {
+    month: "short", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+}
+
+function fmtKbps(v: number) {
+  if (v >= 1024) return `${(v / 1024).toFixed(2)} MB/s`;
+  return `${v.toFixed(1)} kB/s`;
+}
+
+function labelFor(min: number) {
+  if (min < 60) return `${min}m`;
+  if (min < 1440) return `${min / 60}h`;
+  return `${min / 1440}d`;
 }
 
 function CommandLog({ c }: { c: CommandRow }) {
