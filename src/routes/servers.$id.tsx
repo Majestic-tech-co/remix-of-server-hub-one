@@ -184,6 +184,12 @@ function ServerDetail() {
 
   const submitCommand = async (cmd: string) => {
     if (!user || !cmd.trim()) return;
+    if (isDangerous(cmd)) {
+      const ok = window.confirm(
+        `This command looks destructive:\n\n  ${cmd}\n\nRun it on "${server?.name ?? "this server"}"?`,
+      );
+      if (!ok) return;
+    }
     setRunning(true);
     const { error } = await supabase.from("commands").insert({
       user_id: user.id,
@@ -193,7 +199,7 @@ function ServerDetail() {
     setRunning(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("Queued — agent will pick it up within 10s");
+      toast.success("Queued — agent will pick it up within 15s");
       setCmdInput("");
       loadAll();
     }
