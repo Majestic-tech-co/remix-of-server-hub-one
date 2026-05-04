@@ -70,6 +70,7 @@ interface CommandRow {
   stdout: string | null;
   stderr: string | null;
   created_at: string;
+  started_at: string | null;
   completed_at: string | null;
 }
 
