@@ -490,6 +490,164 @@ function CommandLog({ c }: { c: CommandRow }) {
   );
 }
 
+function Terminal({
+  serverName,
+  online,
+  commands,
+  onSubmit,
+  running,
+}: {
+  serverName: string;
+  online: boolean;
+  commands: CommandRow[];
+  onSubmit: (cmd: string) => void;
+  running: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [hIdx, setHIdx] = useState<number>(-1);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Oldest → newest, filter cleared
+  const visible = useMemo(
+    () => [...commands].reverse().filter((c) => !hidden.has(c.id)),
+    [commands, hidden],
+  );
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [visible]);
+
+  const focusInput = () => inputRef.current?.focus();
+
+  const handleSubmit = () => {
+    const cmd = input.trim();
+    if (!cmd) return;
+    if (cmd === "clear" || cmd === "cls") {
+      setHidden(new Set(commands.map((c) => c.id)));
+      setHistory((h) => [cmd, ...h]);
+      setInput("");
+      setHIdx(-1);
+      return;
+    }
+    onSubmit(cmd);
+    setHistory((h) => [cmd, ...h]);
+    setInput("");
+    setHIdx(-1);
+  };
+
+  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = Math.min(hIdx + 1, history.length - 1);
+      if (next >= 0 && history[next] != null) {
+        setHIdx(next);
+        setInput(history[next]);
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = hIdx - 1;
+      if (next < 0) {
+        setHIdx(-1);
+        setInput("");
+      } else {
+        setHIdx(next);
+        setInput(history[next]);
+      }
+    } else if (e.key === "l" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setHidden(new Set(commands.map((c) => c.id)));
+    }
+  };
+
+  const prompt = `root@${serverName}:~#`;
+
+  return (
+    <Card className="overflow-hidden border-border/60 bg-terminal" onClick={focusInput}>
+      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <TermIcon className="h-3.5 w-3.5" />
+          <span>{serverName} · interactive shell</span>
+          <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={(e) => { e.stopPropagation(); onSubmit(p.cmd); }}
+              disabled={running}
+              className="rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="h-[60vh] min-h-[420px] overflow-auto p-4 font-mono text-[12.5px] leading-relaxed text-terminal-foreground"
+      >
+        {!online && (
+          <div className="mb-3 text-warning">
+            ⚠ Server is offline — commands will queue and run when the agent reconnects.
+          </div>
+        )}
+        {visible.length === 0 && (
+          <div className="text-muted-foreground">
+            Welcome to Fleet shell. Type a command and press Enter. Use ↑/↓ for history, `clear` to wipe.
+          </div>
+        )}
+        {visible.map((c) => (
+          <div key={c.id} className="mb-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-primary">{prompt}</span>
+              <span className="whitespace-pre-wrap break-all">{c.command}</span>
+            </div>
+            {c.status === "pending" && (
+              <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
+            )}
+            {c.status === "running" && (
+              <div className="mt-0.5 text-warning">[running…]</div>
+            )}
+            {c.stdout && (
+              <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
+            )}
+            {c.stderr && (
+              <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
+            )}
+            {(c.status === "completed" || c.status === "failed") && c.exit_code != null && c.exit_code !== 0 && (
+              <div className="mt-0.5 text-[11px] text-destructive">[exit {c.exit_code}]</div>
+            )}
+          </div>
+        ))}
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-primary">{prompt}</span>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKey}
+            spellCheck={false}
+            autoComplete="off"
+            autoCapitalize="off"
+            className="flex-1 border-0 bg-transparent p-0 font-mono text-[12.5px] text-terminal-foreground outline-none placeholder:text-muted-foreground/60"
+            placeholder={running ? "queuing…" : "type a command"}
+            autoFocus
+          />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function Tile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
     <Card className="p-5">
