@@ -70,16 +70,36 @@ interface CommandRow {
   stdout: string | null;
   stderr: string | null;
   created_at: string;
+  started_at: string | null;
   completed_at: string | null;
 }
 
 const PRESETS = [
-  { label: "apt update + upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
+  { label: "apt upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
   { label: "dnf upgrade", cmd: "dnf -y upgrade" },
-  { label: "Disk usage", cmd: "df -h" },
-  { label: "Top processes", cmd: "ps aux --sort=-%cpu | head -15" },
-  { label: "Reboot", cmd: "reboot" },
+  { label: "df -h", cmd: "df -h" },
+  { label: "free -h", cmd: "free -h" },
+  { label: "top procs", cmd: "ps aux --sort=-%cpu | head -15" },
+  { label: "uptime", cmd: "uptime" },
+  { label: "journal -50", cmd: "journalctl -n 50 --no-pager" },
+  { label: "reboot (1m)", cmd: "shutdown -r +1 'Fleet: scheduled reboot — cancel with: shutdown -c'" },
 ];
+
+// Commands the UI asks the user to confirm before sending.
+const DANGEROUS = [
+  /\breboot\b/i,
+  /\bshutdown\b/i,
+  /\bhalt\b/i,
+  /\bpoweroff\b/i,
+  /\bmkfs\b/i,
+  /\bdd\s+if=/i,
+  /\brm\s+-rf?\s+\/(?!\S*tmp)/i,
+  /:\(\)\s*\{.*\};:/,
+  /\bsystemctl\s+(stop|disable|mask)\s+fleet-agent\b/i,
+];
+function isDangerous(cmd: string) {
+  return DANGEROUS.some((r) => r.test(cmd));
+}
 
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
@@ -165,6 +185,12 @@ function ServerDetail() {
 
   const submitCommand = async (cmd: string) => {
     if (!user || !cmd.trim()) return;
+    if (isDangerous(cmd)) {
+      const ok = window.confirm(
+        `This command looks destructive:\n\n  ${cmd}\n\nRun it on "${server?.name ?? "this server"}"?`,
+      );
+      if (!ok) return;
+    }
     setRunning(true);
     const { error } = await supabase.from("commands").insert({
       user_id: user.id,
@@ -174,7 +200,7 @@ function ServerDetail() {
     setRunning(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("Queued — agent will pick it up within 10s");
+      toast.success("Queued — agent will pick it up within 15s");
       setCmdInput("");
       loadAll();
     }
@@ -489,9 +515,19 @@ function Terminal({
     [commands, hidden],
   );
 
+  // Only autoscroll when a new command id appears or output of the latest one grows.
+  const lastSigRef = useRef<string>("");
   useEffect(() => {
+    const sig = visible
+      .map((c) => `${c.id}:${c.status}:${(c.stdout?.length ?? 0) + (c.stderr?.length ?? 0)}`)
+      .join("|");
+    if (sig === lastSigRef.current) return;
+    lastSigRef.current = sig;
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    // Stick to bottom only if user is already near it.
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [visible]);
 
   const focusInput = () => inputRef.current?.focus();
@@ -577,29 +613,35 @@ function Terminal({
             Welcome to Fleet shell. Type a command and press Enter. Use ↑/↓ for history, `clear` to wipe.
           </div>
         )}
-        {visible.map((c) => (
-          <div key={c.id} className="mb-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-primary">{prompt}</span>
-              <span className="whitespace-pre-wrap break-all">{c.command}</span>
+        {visible.map((c) => {
+          const dur = cmdDuration(c);
+          const ok = c.status === "completed" && (c.exit_code ?? 0) === 0;
+          return (
+            <div key={c.id} className="mb-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-primary">{prompt}</span>
+                <span className="whitespace-pre-wrap break-all">{c.command}</span>
+              </div>
+              {c.status === "pending" && (
+                <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
+              )}
+              {c.status === "running" && (
+                <div className="mt-0.5 text-warning">[running… {dur}]</div>
+              )}
+              {c.stdout && (
+                <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
+              )}
+              {c.stderr && (
+                <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
+              )}
+              {(c.status === "completed" || c.status === "failed") && (
+                <div className={`mt-0.5 text-[11px] ${ok ? "text-muted-foreground" : "text-destructive"}`}>
+                  [exit {c.exit_code ?? "?"} · {dur}]
+                </div>
+              )}
             </div>
-            {c.status === "pending" && (
-              <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
-            )}
-            {c.status === "running" && (
-              <div className="mt-0.5 text-warning">[running…]</div>
-            )}
-            {c.stdout && (
-              <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
-            )}
-            {c.stderr && (
-              <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
-            )}
-            {(c.status === "completed" || c.status === "failed") && c.exit_code != null && c.exit_code !== 0 && (
-              <div className="mt-0.5 text-[11px] text-destructive">[exit {c.exit_code}]</div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         <div className="flex items-baseline gap-2">
           <span className="text-primary">{prompt}</span>
@@ -648,4 +690,14 @@ function timeAgo(iso: string) {
   if (s < 3600) return `${Math.round(s / 60)}m ago`;
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
   return `${Math.round(s / 86400)}d ago`;
+}
+function cmdDuration(c: CommandRow) {
+  const start = c.started_at ? new Date(c.started_at).getTime() : new Date(c.created_at).getTime();
+  const end = c.completed_at ? new Date(c.completed_at).getTime() : Date.now();
+  const ms = Math.max(0, end - start);
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60_000);
+  const s = Math.round((ms % 60_000) / 1000);
+  return `${m}m${s.toString().padStart(2, "0")}s`;
 }
