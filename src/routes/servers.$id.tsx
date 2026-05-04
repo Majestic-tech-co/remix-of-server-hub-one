@@ -613,29 +613,35 @@ function Terminal({
             Welcome to Fleet shell. Type a command and press Enter. Use ↑/↓ for history, `clear` to wipe.
           </div>
         )}
-        {visible.map((c) => (
-          <div key={c.id} className="mb-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-primary">{prompt}</span>
-              <span className="whitespace-pre-wrap break-all">{c.command}</span>
+        {visible.map((c) => {
+          const dur = cmdDuration(c);
+          const ok = c.status === "completed" && (c.exit_code ?? 0) === 0;
+          return (
+            <div key={c.id} className="mb-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-primary">{prompt}</span>
+                <span className="whitespace-pre-wrap break-all">{c.command}</span>
+              </div>
+              {c.status === "pending" && (
+                <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
+              )}
+              {c.status === "running" && (
+                <div className="mt-0.5 text-warning">[running… {dur}]</div>
+              )}
+              {c.stdout && (
+                <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
+              )}
+              {c.stderr && (
+                <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
+              )}
+              {(c.status === "completed" || c.status === "failed") && (
+                <div className={`mt-0.5 text-[11px] ${ok ? "text-muted-foreground" : "text-destructive"}`}>
+                  [exit {c.exit_code ?? "?"} · {dur}]
+                </div>
+              )}
             </div>
-            {c.status === "pending" && (
-              <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
-            )}
-            {c.status === "running" && (
-              <div className="mt-0.5 text-warning">[running…]</div>
-            )}
-            {c.stdout && (
-              <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
-            )}
-            {c.stderr && (
-              <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
-            )}
-            {(c.status === "completed" || c.status === "failed") && c.exit_code != null && c.exit_code !== 0 && (
-              <div className="mt-0.5 text-[11px] text-destructive">[exit {c.exit_code}]</div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         <div className="flex items-baseline gap-2">
           <span className="text-primary">{prompt}</span>
