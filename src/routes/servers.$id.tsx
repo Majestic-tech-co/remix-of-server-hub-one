@@ -462,32 +462,6 @@ function labelFor(min: number) {
   return `${min / 1440}d`;
 }
 
-function CommandLog({ c }: { c: CommandRow }) {
-  const statusColor =
-    c.status === "completed" ? "text-primary" :
-    c.status === "failed" ? "text-destructive" :
-    c.status === "running" ? "text-warning" : "text-muted-foreground";
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-xs">
-          <span className="text-primary">$</span>
-          <span className="truncate">{c.command}</span>
-        </div>
-        <div className="flex flex-none items-center gap-3 font-mono text-[10px] uppercase">
-          <span className={statusColor}>{c.status}</span>
-          {c.exit_code != null && <span className="text-muted-foreground">exit {c.exit_code}</span>}
-          <span className="text-muted-foreground">{timeAgo(c.created_at)}</span>
-        </div>
-      </div>
-      {(c.stdout || c.stderr) && (
-        <pre className="max-h-72 overflow-auto bg-terminal p-4 font-mono text-xs leading-relaxed text-terminal-foreground">
-{c.stdout}{c.stderr ? `\n[stderr]\n${c.stderr}` : ""}
-        </pre>
-      )}
-    </Card>
-  );
-}
 
 function Terminal({
   serverName,
