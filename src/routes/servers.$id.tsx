@@ -335,48 +335,14 @@ function ServerDetail() {
           </ChartCard>
         </TabsContent>
 
-        <TabsContent value="commands" className="mt-6 space-y-4">
-          <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              <TermIcon className="h-3.5 w-3.5" /> Run command
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-terminal px-3 font-mono text-sm">
-                  <span className="text-primary">$</span>
-                  <Input
-                    value={cmdInput}
-                    onChange={(e) => setCmdInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") submitCommand(cmdInput); }}
-                    placeholder="uname -a"
-                    className="border-0 bg-transparent font-mono text-terminal-foreground shadow-none focus-visible:ring-0"
-                  />
-                </div>
-                <Button onClick={() => submitCommand(cmdInput)} disabled={running || !cmdInput.trim()}>
-                  <Play className="h-4 w-4" /> Run
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map((p) => (
-                  <Button key={p.label} size="sm" variant="secondary" onClick={() => submitCommand(p.cmd)} disabled={running}>
-                    <Zap className="h-3.5 w-3.5" /> {p.label}
-                  </Button>
-                ))}
-              </div>
-              {!online && (
-                <p className="text-xs text-warning">
-                  Server is offline — command will queue and run when the agent reconnects.
-                </p>
-              )}
-            </div>
-          </Card>
-
-          <div className="space-y-3">
-            {commands.length === 0 && (
-              <div className="text-sm text-muted-foreground">No commands yet.</div>
-            )}
-            {commands.map((c) => <CommandLog key={c.id} c={c} />)}
-          </div>
+        <TabsContent value="commands" className="mt-6">
+          <Terminal
+            serverName={server.hostname || server.name}
+            online={!!online}
+            commands={commands}
+            onSubmit={submitCommand}
+            running={running}
+          />
         </TabsContent>
       </Tabs>
     </div>
