@@ -104,35 +104,80 @@ read_metrics() {
 JSON
 }
 
-run_command() {
-  local cmd_id="$1" cmd="$2"
-  local out err code
-  out_file=$(mktemp); err_file=$(mktemp)
-  bash -c "$cmd" >"$out_file" 2>"$err_file"
-  code=$?
-  out=$(head -c 200000 "$out_file")
-  err=$(head -c 200000 "$err_file")
-  rm -f "$out_file" "$err_file"
+RUNNING_DIR=/var/lib/fleet-agent/running
+mkdir -p "$RUNNING_DIR"
+# Hard cap: how long a single command may run before SIGTERM
+CMD_TIMEOUT="${CMD_TIMEOUT:-1800}"   # 30 min default
+# Max concurrent commands
+CMD_MAX_CONCURRENT="${CMD_MAX_CONCURRENT:-2}"
+
+post_result() {
+  local cmd_id="$1" code="$2" out_file="$3" err_file="$4"
+  local out err
+  out=$(head -c 200000 "$out_file" 2>/dev/null || echo "")
+  err=$(head -c 200000 "$err_file" 2>/dev/null || echo "")
   payload=$(jq -n --arg id "$cmd_id" --argjson code "$code" --arg out "$out" --arg err "$err" \
     '{command_id:$id, exit_code:$code, stdout:$out, stderr:$err}')
-  curl -fsS -X POST "$FLEET_URL/api/agent/command-result" \
-    -H "Content-Type: application/json" \
-    -H "X-Fleet-Token: $FLEET_TOKEN" \
-    -d "$payload" >/dev/null || true
+  # Retry the result POST a few times so a transient network blip doesn't
+  # leave a command stuck in "running" forever.
+  for attempt in 1 2 3 4 5; do
+    if curl -fsS --max-time 30 -X POST "$FLEET_URL/api/agent/command-result" \
+        -H "Content-Type: application/json" \
+        -H "X-Fleet-Token: $FLEET_TOKEN" \
+        -d "$payload" >/dev/null; then
+      break
+    fi
+    sleep $((attempt * 2))
+  done
+}
+
+run_command_async() {
+  local cmd_id="$1" cmd="$2"
+  local marker="$RUNNING_DIR/$cmd_id"
+  # Skip if already running (idempotency — same command may be re-issued)
+  [ -e "$marker" ] && return 0
+  : > "$marker"
+
+  (
+    out_file=$(mktemp); err_file=$(mktemp)
+    # - </dev/null: no stdin so prompts don't hang forever
+    # - setsid + new process group so we can clean up child trees
+    # - timeout: hard cap to protect the box from runaway jobs
+    # - DEBIAN_FRONTEND=noninteractive: avoid apt prompts by default
+    DEBIAN_FRONTEND=noninteractive setsid timeout --signal=TERM --kill-after=30 "$CMD_TIMEOUT" \
+      bash -c "$cmd" </dev/null >"$out_file" 2>"$err_file"
+    code=$?
+    if [ "$code" -eq 124 ]; then
+      echo "[fleet-agent] command exceeded ${CMD_TIMEOUT}s timeout, terminated" >> "$err_file"
+    fi
+    post_result "$cmd_id" "$code" "$out_file" "$err_file"
+    rm -f "$out_file" "$err_file" "$marker"
+  ) &
+  disown || true
+}
+
+reap_stale() {
+  # Remove markers whose child died without cleanup (e.g. agent restart)
+  find "$RUNNING_DIR" -type f -mmin +60 -delete 2>/dev/null || true
 }
 
 while true; do
+  reap_stale
   body=$(read_metrics)
-  resp=$(curl -fsS -X POST "$FLEET_URL/api/agent/metrics" \
+  resp=$(curl -fsS --max-time 20 -X POST "$FLEET_URL/api/agent/metrics" \
     -H "Content-Type: application/json" \
     -H "X-Fleet-Token: $FLEET_TOKEN" \
-    -d "$body" || echo '{}')
+    -d "$body" 2>/dev/null || echo '{}')
 
-  echo "$resp" | jq -c '.pending_commands[]?' 2>/dev/null | while read -r row; do
+  # Respect concurrency cap
+  while IFS= read -r row; do
+    [ -z "$row" ] && continue
+    running=$(find "$RUNNING_DIR" -type f 2>/dev/null | wc -l)
+    if [ "$running" -ge "$CMD_MAX_CONCURRENT" ]; then break; fi
     id=$(echo "$row" | jq -r '.id')
     cmd=$(echo "$row" | jq -r '.command')
-    [ -n "$id" ] && run_command "$id" "$cmd"
-  done
+    [ -n "$id" ] && [ "$id" != "null" ] && run_command_async "$id" "$cmd"
+  done < <(echo "$resp" | jq -c '.pending_commands[]?' 2>/dev/null)
 
   sleep 15
 done
