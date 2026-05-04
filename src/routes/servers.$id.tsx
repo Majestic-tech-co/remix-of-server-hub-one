@@ -74,12 +74,31 @@ interface CommandRow {
 }
 
 const PRESETS = [
-  { label: "apt update + upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
+  { label: "apt upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
   { label: "dnf upgrade", cmd: "dnf -y upgrade" },
-  { label: "Disk usage", cmd: "df -h" },
-  { label: "Top processes", cmd: "ps aux --sort=-%cpu | head -15" },
-  { label: "Reboot", cmd: "reboot" },
+  { label: "df -h", cmd: "df -h" },
+  { label: "free -h", cmd: "free -h" },
+  { label: "top procs", cmd: "ps aux --sort=-%cpu | head -15" },
+  { label: "uptime", cmd: "uptime" },
+  { label: "journal -50", cmd: "journalctl -n 50 --no-pager" },
+  { label: "reboot (1m)", cmd: "shutdown -r +1 'Fleet: scheduled reboot — cancel with: shutdown -c'" },
 ];
+
+// Commands the UI asks the user to confirm before sending.
+const DANGEROUS = [
+  /\breboot\b/i,
+  /\bshutdown\b/i,
+  /\bhalt\b/i,
+  /\bpoweroff\b/i,
+  /\bmkfs\b/i,
+  /\bdd\s+if=/i,
+  /\brm\s+-rf?\s+\/(?!\S*tmp)/i,
+  /:\(\)\s*\{.*\};:/,
+  /\bsystemctl\s+(stop|disable|mask)\s+fleet-agent\b/i,
+];
+function isDangerous(cmd: string) {
+  return DANGEROUS.some((r) => r.test(cmd));
+}
 
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
