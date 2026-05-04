@@ -514,9 +514,19 @@ function Terminal({
     [commands, hidden],
   );
 
+  // Only autoscroll when a new command id appears or output of the latest one grows.
+  const lastSigRef = useRef<string>("");
   useEffect(() => {
+    const sig = visible
+      .map((c) => `${c.id}:${c.status}:${(c.stdout?.length ?? 0) + (c.stderr?.length ?? 0)}`)
+      .join("|");
+    if (sig === lastSigRef.current) return;
+    lastSigRef.current = sig;
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    // Stick to bottom only if user is already near it.
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [visible]);
 
   const focusInput = () => inputRef.current?.focus();
