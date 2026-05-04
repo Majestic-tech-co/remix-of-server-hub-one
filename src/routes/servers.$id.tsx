@@ -1,14 +1,13 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, Play, RefreshCw, Terminal as TermIcon, Zap, Clock } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Terminal as TermIcon, Clock } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -335,48 +334,14 @@ function ServerDetail() {
           </ChartCard>
         </TabsContent>
 
-        <TabsContent value="commands" className="mt-6 space-y-4">
-          <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              <TermIcon className="h-3.5 w-3.5" /> Run command
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-terminal px-3 font-mono text-sm">
-                  <span className="text-primary">$</span>
-                  <Input
-                    value={cmdInput}
-                    onChange={(e) => setCmdInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") submitCommand(cmdInput); }}
-                    placeholder="uname -a"
-                    className="border-0 bg-transparent font-mono text-terminal-foreground shadow-none focus-visible:ring-0"
-                  />
-                </div>
-                <Button onClick={() => submitCommand(cmdInput)} disabled={running || !cmdInput.trim()}>
-                  <Play className="h-4 w-4" /> Run
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map((p) => (
-                  <Button key={p.label} size="sm" variant="secondary" onClick={() => submitCommand(p.cmd)} disabled={running}>
-                    <Zap className="h-3.5 w-3.5" /> {p.label}
-                  </Button>
-                ))}
-              </div>
-              {!online && (
-                <p className="text-xs text-warning">
-                  Server is offline — command will queue and run when the agent reconnects.
-                </p>
-              )}
-            </div>
-          </Card>
-
-          <div className="space-y-3">
-            {commands.length === 0 && (
-              <div className="text-sm text-muted-foreground">No commands yet.</div>
-            )}
-            {commands.map((c) => <CommandLog key={c.id} c={c} />)}
-          </div>
+        <TabsContent value="commands" className="mt-6">
+          <Terminal
+            serverName={server.hostname || server.name}
+            online={!!online}
+            commands={commands}
+            onSubmit={submitCommand}
+            running={running}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -497,29 +462,161 @@ function labelFor(min: number) {
   return `${min / 1440}d`;
 }
 
-function CommandLog({ c }: { c: CommandRow }) {
-  const statusColor =
-    c.status === "completed" ? "text-primary" :
-    c.status === "failed" ? "text-destructive" :
-    c.status === "running" ? "text-warning" : "text-muted-foreground";
+
+function Terminal({
+  serverName,
+  online,
+  commands,
+  onSubmit,
+  running,
+}: {
+  serverName: string;
+  online: boolean;
+  commands: CommandRow[];
+  onSubmit: (cmd: string) => void;
+  running: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [hIdx, setHIdx] = useState<number>(-1);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Oldest → newest, filter cleared
+  const visible = useMemo(
+    () => [...commands].reverse().filter((c) => !hidden.has(c.id)),
+    [commands, hidden],
+  );
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [visible]);
+
+  const focusInput = () => inputRef.current?.focus();
+
+  const handleSubmit = () => {
+    const cmd = input.trim();
+    if (!cmd) return;
+    if (cmd === "clear" || cmd === "cls") {
+      setHidden(new Set(commands.map((c) => c.id)));
+      setHistory((h) => [cmd, ...h]);
+      setInput("");
+      setHIdx(-1);
+      return;
+    }
+    onSubmit(cmd);
+    setHistory((h) => [cmd, ...h]);
+    setInput("");
+    setHIdx(-1);
+  };
+
+  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = Math.min(hIdx + 1, history.length - 1);
+      if (next >= 0 && history[next] != null) {
+        setHIdx(next);
+        setInput(history[next]);
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = hIdx - 1;
+      if (next < 0) {
+        setHIdx(-1);
+        setInput("");
+      } else {
+        setHIdx(next);
+        setInput(history[next]);
+      }
+    } else if (e.key === "l" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setHidden(new Set(commands.map((c) => c.id)));
+    }
+  };
+
+  const prompt = `root@${serverName}:~#`;
+
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-xs">
-          <span className="text-primary">$</span>
-          <span className="truncate">{c.command}</span>
+    <Card className="overflow-hidden border-border/60 bg-terminal" onClick={focusInput}>
+      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <TermIcon className="h-3.5 w-3.5" />
+          <span>{serverName} · interactive shell</span>
+          <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
         </div>
-        <div className="flex flex-none items-center gap-3 font-mono text-[10px] uppercase">
-          <span className={statusColor}>{c.status}</span>
-          {c.exit_code != null && <span className="text-muted-foreground">exit {c.exit_code}</span>}
-          <span className="text-muted-foreground">{timeAgo(c.created_at)}</span>
+        <div className="flex flex-wrap items-center gap-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={(e) => { e.stopPropagation(); onSubmit(p.cmd); }}
+              disabled={running}
+              className="rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
       </div>
-      {(c.stdout || c.stderr) && (
-        <pre className="max-h-72 overflow-auto bg-terminal p-4 font-mono text-xs leading-relaxed text-terminal-foreground">
-{c.stdout}{c.stderr ? `\n[stderr]\n${c.stderr}` : ""}
-        </pre>
-      )}
+
+      <div
+        ref={scrollRef}
+        className="h-[60vh] min-h-[420px] overflow-auto p-4 font-mono text-[12.5px] leading-relaxed text-terminal-foreground"
+      >
+        {!online && (
+          <div className="mb-3 text-warning">
+            ⚠ Server is offline — commands will queue and run when the agent reconnects.
+          </div>
+        )}
+        {visible.length === 0 && (
+          <div className="text-muted-foreground">
+            Welcome to Fleet shell. Type a command and press Enter. Use ↑/↓ for history, `clear` to wipe.
+          </div>
+        )}
+        {visible.map((c) => (
+          <div key={c.id} className="mb-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-primary">{prompt}</span>
+              <span className="whitespace-pre-wrap break-all">{c.command}</span>
+            </div>
+            {c.status === "pending" && (
+              <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
+            )}
+            {c.status === "running" && (
+              <div className="mt-0.5 text-warning">[running…]</div>
+            )}
+            {c.stdout && (
+              <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
+            )}
+            {c.stderr && (
+              <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
+            )}
+            {(c.status === "completed" || c.status === "failed") && c.exit_code != null && c.exit_code !== 0 && (
+              <div className="mt-0.5 text-[11px] text-destructive">[exit {c.exit_code}]</div>
+            )}
+          </div>
+        ))}
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-primary">{prompt}</span>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKey}
+            spellCheck={false}
+            autoComplete="off"
+            autoCapitalize="off"
+            className="flex-1 border-0 bg-transparent p-0 font-mono text-[12.5px] text-terminal-foreground outline-none placeholder:text-muted-foreground/60"
+            placeholder={running ? "queuing…" : "type a command"}
+            autoFocus
+          />
+        </div>
+      </div>
     </Card>
   );
 }
