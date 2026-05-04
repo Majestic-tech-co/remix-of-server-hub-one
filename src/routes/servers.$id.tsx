@@ -691,3 +691,13 @@ function timeAgo(iso: string) {
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
   return `${Math.round(s / 86400)}d ago`;
 }
+function cmdDuration(c: CommandRow) {
+  const start = c.started_at ? new Date(c.started_at).getTime() : new Date(c.created_at).getTime();
+  const end = c.completed_at ? new Date(c.completed_at).getTime() : Date.now();
+  const ms = Math.max(0, end - start);
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const m = Math.floor(ms / 60_000);
+  const s = Math.round((ms % 60_000) / 1000);
+  return `${m}m${s.toString().padStart(2, "0")}s`;
+}
