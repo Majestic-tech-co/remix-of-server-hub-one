@@ -135,12 +135,18 @@ function ServerDetail() {
     setCommands((c ?? []) as CommandRow[]);
   };
 
+  // Poll fast (2s) when a command is in flight so live output streams in,
+  // otherwise fall back to 8s to keep request volume low.
+  const hasActiveCommand = useMemo(
+    () => commands.some((c) => c.status === "pending" || c.status === "running"),
+    [commands],
+  );
   useEffect(() => {
     loadAll();
-    const i = setInterval(loadAll, 8000);
+    const i = setInterval(loadAll, hasActiveCommand ? 2000 : 8000);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user, rangeMin]);
+  }, [id, user, rangeMin, hasActiveCommand]);
 
   const latest = metrics[metrics.length - 1];
   const online = server?.last_seen_at && Date.now() - new Date(server.last_seen_at).getTime() < 90_000;

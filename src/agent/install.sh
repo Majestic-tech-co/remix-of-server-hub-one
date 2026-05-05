@@ -131,6 +131,22 @@ post_result() {
   done
 }
 
+post_output() {
+  # Stream partial stdout/stderr while the command is still running so the UI
+  # can show live progress instead of "running…" with nothing for minutes.
+  local cmd_id="$1" out_file="$2" err_file="$3"
+  local out err payload
+  # Tail the last ~200KB so progress bars / large logs stay under the column cap.
+  out=$(tail -c 200000 "$out_file" 2>/dev/null || echo "")
+  err=$(tail -c 200000 "$err_file" 2>/dev/null || echo "")
+  payload=$(jq -n --arg id "$cmd_id" --arg out "$out" --arg err "$err" \
+    '{command_id:$id, stdout:$out, stderr:$err}')
+  curl -fsS --max-time 10 -X POST "$FLEET_URL/api/agent/command-output" \
+    -H "Content-Type: application/json" \
+    -H "X-Fleet-Token: $FLEET_TOKEN" \
+    -d "$payload" >/dev/null 2>&1 || true
+}
+
 run_command_async() {
   local cmd_id="$1" cmd="$2"
   local marker="$RUNNING_DIR/$cmd_id"
@@ -140,18 +156,31 @@ run_command_async() {
 
   (
     out_file=$(mktemp); err_file=$(mktemp)
+    # Force line-buffered output for many tools (apt, pip, etc.) so progress
+    # appears as it happens rather than after huge stdio buffer flushes.
     # - </dev/null: no stdin so prompts don't hang forever
     # - setsid + new process group so we can clean up child trees
     # - timeout: hard cap to protect the box from runaway jobs
     # - DEBIAN_FRONTEND=noninteractive: avoid apt prompts by default
-    DEBIAN_FRONTEND=noninteractive setsid timeout --signal=TERM --kill-after=30 "$CMD_TIMEOUT" \
-      bash -c "$cmd" </dev/null >"$out_file" 2>"$err_file"
-    code=$?
+    (
+      DEBIAN_FRONTEND=noninteractive setsid timeout --signal=TERM --kill-after=30 "$CMD_TIMEOUT" \
+        stdbuf -oL -eL bash -c "$cmd" </dev/null >"$out_file" 2>"$err_file"
+      echo $? > "$out_file.exit"
+    ) &
+    cmd_pid=$!
+
+    # Stream output every 2s until the command finishes.
+    while kill -0 "$cmd_pid" 2>/dev/null; do
+      post_output "$cmd_id" "$out_file" "$err_file"
+      sleep 2
+    done
+    wait "$cmd_pid" 2>/dev/null || true
+    code=$(cat "$out_file.exit" 2>/dev/null || echo 1)
     if [ "$code" -eq 124 ]; then
       echo "[fleet-agent] command exceeded ${CMD_TIMEOUT}s timeout, terminated" >> "$err_file"
     fi
     post_result "$cmd_id" "$code" "$out_file" "$err_file"
-    rm -f "$out_file" "$err_file" "$marker"
+    rm -f "$out_file" "$err_file" "$out_file.exit" "$marker"
   ) &
   disown || true
 }

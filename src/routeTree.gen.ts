@@ -15,6 +15,7 @@ import { Route as ServersIdRouteImport } from './routes/servers.$id'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
+import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.command-output'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -46,11 +47,17 @@ const ApiAgentCommandResultRoute = ApiAgentCommandResultRouteImport.update({
   path: '/api/agent/command-result',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentCommandOutputRoute = ApiAgentCommandOutputRouteImport.update({
+  id: '/api/agent/command-output',
+  path: '/api/agent/command-output',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/servers/$id'
+    | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/servers/$id'
+    | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/servers/$id'
+    | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ServersIdRoute: typeof ServersIdRoute
+  ApiAgentCommandOutputRoute: typeof ApiAgentCommandOutputRoute
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentCommandResultRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/command-output': {
+      id: '/api/agent/command-output'
+      path: '/api/agent/command-output'
+      fullPath: '/api/agent/command-output'
+      preLoaderRoute: typeof ApiAgentCommandOutputRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ServersIdRoute: ServersIdRoute,
+  ApiAgentCommandOutputRoute: ApiAgentCommandOutputRoute,
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
   ApiAgentInstallRoute: ApiAgentInstallRoute,
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
@@ -166,3 +187,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
