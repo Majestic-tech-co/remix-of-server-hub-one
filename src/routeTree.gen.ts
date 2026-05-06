@@ -12,6 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServersIdRouteImport } from './routes/servers.$id'
+import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
+import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
+import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
@@ -30,6 +33,21 @@ const IndexRoute = IndexRouteImport.update({
 const ServersIdRoute = ServersIdRouteImport.update({
   id: '/servers/$id',
   path: '/servers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
+  id: '/api/terminal/start',
+  path: '/api/terminal/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTerminalPollRoute = ApiTerminalPollRouteImport.update({
+  id: '/api/terminal/poll',
+  path: '/api/terminal/poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
+  id: '/api/agent/terminal',
+  path: '/api/agent/terminal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAgentMetricsRoute = ApiAgentMetricsRouteImport.update({
@@ -61,6 +79,9 @@ export interface FileRoutesByFullPath {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/terminal/poll': typeof ApiTerminalPollRoute
+  '/api/terminal/start': typeof ApiTerminalStartRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +91,9 @@ export interface FileRoutesByTo {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/terminal/poll': typeof ApiTerminalPollRoute
+  '/api/terminal/start': typeof ApiTerminalStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +104,9 @@ export interface FileRoutesById {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/terminal/poll': typeof ApiTerminalPollRoute
+  '/api/terminal/start': typeof ApiTerminalStartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +118,9 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/terminal'
+    | '/api/terminal/poll'
+    | '/api/terminal/start'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +130,9 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/terminal'
+    | '/api/terminal/poll'
+    | '/api/terminal/start'
   id:
     | '__root__'
     | '/'
@@ -109,6 +142,9 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/terminal'
+    | '/api/terminal/poll'
+    | '/api/terminal/start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +155,9 @@ export interface RootRouteChildren {
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
+  ApiAgentTerminalRoute: typeof ApiAgentTerminalRoute
+  ApiTerminalPollRoute: typeof ApiTerminalPollRoute
+  ApiTerminalStartRoute: typeof ApiTerminalStartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -142,6 +181,27 @@ declare module '@tanstack/react-router' {
       path: '/servers/$id'
       fullPath: '/servers/$id'
       preLoaderRoute: typeof ServersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/terminal/start': {
+      id: '/api/terminal/start'
+      path: '/api/terminal/start'
+      fullPath: '/api/terminal/start'
+      preLoaderRoute: typeof ApiTerminalStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/terminal/poll': {
+      id: '/api/terminal/poll'
+      path: '/api/terminal/poll'
+      fullPath: '/api/terminal/poll'
+      preLoaderRoute: typeof ApiTerminalPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/terminal': {
+      id: '/api/agent/terminal'
+      path: '/api/agent/terminal'
+      fullPath: '/api/agent/terminal'
+      preLoaderRoute: typeof ApiAgentTerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agent/metrics': {
@@ -183,6 +243,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
   ApiAgentInstallRoute: ApiAgentInstallRoute,
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
+  ApiAgentTerminalRoute: ApiAgentTerminalRoute,
+  ApiTerminalPollRoute: ApiTerminalPollRoute,
+  ApiTerminalStartRoute: ApiTerminalStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
