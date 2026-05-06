@@ -13,9 +13,10 @@ fi
 INSTALL_DIR=/opt/fleet-agent
 mkdir -p "$INSTALL_DIR"
 
+# ----- Metrics agent (bash) ---------------------------------------------------
 cat > "$INSTALL_DIR/agent.sh" <<'AGENT'
 #!/usr/bin/env bash
-# Fleet agent — pings every 60s, runs queued commands.
+# Fleet metrics agent — pings every 60s.
 set -uo pipefail
 
 CFG=/etc/fleet-agent.conf
@@ -26,7 +27,6 @@ mkdir -p /var/lib/fleet-agent
 
 read_metrics() {
   local hostname ip os cpu mem_pct mem_used mem_total disk_pct disk_used disk_total load1 uptime rx_kbs tx_kbs
-
   hostname="$(hostname -f 2>/dev/null || hostname)"
   ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
   if [ -r /etc/os-release ]; then
@@ -104,114 +104,228 @@ read_metrics() {
 JSON
 }
 
-RUNNING_DIR=/var/lib/fleet-agent/running
-mkdir -p "$RUNNING_DIR"
-# Hard cap: how long a single command may run before SIGTERM
-CMD_TIMEOUT="${CMD_TIMEOUT:-1800}"   # 30 min default
-# Max concurrent commands
-CMD_MAX_CONCURRENT="${CMD_MAX_CONCURRENT:-2}"
-
-post_result() {
-  local cmd_id="$1" code="$2" out_file="$3" err_file="$4"
-  local out err
-  out=$(head -c 200000 "$out_file" 2>/dev/null || echo "")
-  err=$(head -c 200000 "$err_file" 2>/dev/null || echo "")
-  payload=$(jq -n --arg id "$cmd_id" --argjson code "$code" --arg out "$out" --arg err "$err" \
-    '{command_id:$id, exit_code:$code, stdout:$out, stderr:$err}')
-  # Retry the result POST a few times so a transient network blip doesn't
-  # leave a command stuck in "running" forever.
-  for attempt in 1 2 3 4 5; do
-    if curl -fsS --max-time 30 -X POST "$FLEET_URL/api/agent/command-result" \
-        -H "Content-Type: application/json" \
-        -H "X-Fleet-Token: $FLEET_TOKEN" \
-        -d "$payload" >/dev/null; then
-      break
-    fi
-    sleep $((attempt * 2))
-  done
-}
-
-post_output() {
-  # Stream partial stdout/stderr while the command is still running so the UI
-  # can show live progress instead of "running…" with nothing for minutes.
-  local cmd_id="$1" out_file="$2" err_file="$3"
-  local out err payload
-  # Tail the last ~200KB so progress bars / large logs stay under the column cap.
-  out=$(tail -c 200000 "$out_file" 2>/dev/null || echo "")
-  err=$(tail -c 200000 "$err_file" 2>/dev/null || echo "")
-  payload=$(jq -n --arg id "$cmd_id" --arg out "$out" --arg err "$err" \
-    '{command_id:$id, stdout:$out, stderr:$err}')
-  curl -fsS --max-time 10 -X POST "$FLEET_URL/api/agent/command-output" \
-    -H "Content-Type: application/json" \
-    -H "X-Fleet-Token: $FLEET_TOKEN" \
-    -d "$payload" >/dev/null 2>&1 || true
-}
-
-run_command_async() {
-  local cmd_id="$1" cmd="$2"
-  local marker="$RUNNING_DIR/$cmd_id"
-  # Skip if already running (idempotency — same command may be re-issued)
-  [ -e "$marker" ] && return 0
-  : > "$marker"
-
-  (
-    out_file=$(mktemp); err_file=$(mktemp)
-    # Force line-buffered output for many tools (apt, pip, etc.) so progress
-    # appears as it happens rather than after huge stdio buffer flushes.
-    # - </dev/null: no stdin so prompts don't hang forever
-    # - setsid + new process group so we can clean up child trees
-    # - timeout: hard cap to protect the box from runaway jobs
-    # - DEBIAN_FRONTEND=noninteractive: avoid apt prompts by default
-    (
-      DEBIAN_FRONTEND=noninteractive setsid timeout --signal=TERM --kill-after=30 "$CMD_TIMEOUT" \
-        stdbuf -oL -eL bash -c "$cmd" </dev/null >"$out_file" 2>"$err_file"
-      echo $? > "$out_file.exit"
-    ) &
-    cmd_pid=$!
-
-    # Stream output every 2s until the command finishes.
-    while kill -0 "$cmd_pid" 2>/dev/null; do
-      post_output "$cmd_id" "$out_file" "$err_file"
-      sleep 2
-    done
-    wait "$cmd_pid" 2>/dev/null || true
-    code=$(cat "$out_file.exit" 2>/dev/null || echo 1)
-    if [ "$code" -eq 124 ]; then
-      echo "[fleet-agent] command exceeded ${CMD_TIMEOUT}s timeout, terminated" >> "$err_file"
-    fi
-    post_result "$cmd_id" "$code" "$out_file" "$err_file"
-    rm -f "$out_file" "$err_file" "$out_file.exit" "$marker"
-  ) &
-  disown || true
-}
-
-reap_stale() {
-  # Remove markers whose child died without cleanup (e.g. agent restart)
-  find "$RUNNING_DIR" -type f -mmin +60 -delete 2>/dev/null || true
-}
-
 while true; do
-  reap_stale
   body=$(read_metrics)
-  resp=$(curl -fsS --max-time 20 -X POST "$FLEET_URL/api/agent/metrics" \
+  curl -fsS --max-time 20 -X POST "$FLEET_URL/api/agent/metrics" \
     -H "Content-Type: application/json" \
     -H "X-Fleet-Token: $FLEET_TOKEN" \
-    -d "$body" 2>/dev/null || echo '{}')
-
-  # Respect concurrency cap
-  while IFS= read -r row; do
-    [ -z "$row" ] && continue
-    running=$(find "$RUNNING_DIR" -type f 2>/dev/null | wc -l)
-    if [ "$running" -ge "$CMD_MAX_CONCURRENT" ]; then break; fi
-    id=$(echo "$row" | jq -r '.id')
-    cmd=$(echo "$row" | jq -r '.command')
-    [ -n "$id" ] && [ "$id" != "null" ] && run_command_async "$id" "$cmd"
-  done < <(echo "$resp" | jq -c '.pending_commands[]?' 2>/dev/null)
-
-  sleep 15
+    -d "$body" >/dev/null 2>&1 || true
+  sleep 60
 done
 AGENT
 chmod +x "$INSTALL_DIR/agent.sh"
+
+# ----- Terminal agent (Python PTY) -------------------------------------------
+cat > "$INSTALL_DIR/terminal.py" <<'PYAGENT'
+#!/usr/bin/env python3
+# Fleet terminal agent.
+# Long-polls /api/agent/terminal every ~250ms, spawning a real PTY-backed
+# bash for each active session. Bytes from PTY -> server (output queue),
+# bytes from server -> PTY stdin (input buffer).
+
+import base64, fcntl, json, os, pty, select, signal, struct, sys, termios, time, traceback
+from http.client import HTTPConnection, HTTPSConnection
+from urllib.parse import urlparse
+
+CFG = "/etc/fleet-agent.conf"
+cfg = {}
+with open(CFG) as f:
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith("#"): continue
+        if "=" in line:
+            k, v = line.split("=", 1)
+            cfg[k.strip()] = v.strip().strip('"').strip("'")
+
+FLEET_URL = cfg["FLEET_URL"]
+FLEET_TOKEN = cfg["FLEET_TOKEN"]
+
+POLL_INTERVAL_ACTIVE = 0.25   # 250ms when sessions exist
+POLL_INTERVAL_IDLE = 2.0      # 2s when nothing's open
+OUTPUT_FLUSH_BYTES = 8192
+OUTPUT_FLUSH_MS = 200
+
+def post_json(path, body):
+    u = urlparse(FLEET_URL + path)
+    conn_cls = HTTPSConnection if u.scheme == "https" else HTTPConnection
+    conn = conn_cls(u.hostname, u.port or (443 if u.scheme == "https" else 80), timeout=20)
+    payload = json.dumps(body).encode()
+    conn.request("POST", u.path or "/", payload, {
+        "Content-Type": "application/json",
+        "X-Fleet-Token": FLEET_TOKEN,
+    })
+    r = conn.getresponse()
+    data = r.read()
+    conn.close()
+    if r.status >= 400:
+        raise RuntimeError(f"{r.status} {data[:200]!r}")
+    return json.loads(data) if data else {}
+
+# Per-session state
+class Session:
+    def __init__(self, sid, cols, rows):
+        self.sid = sid
+        self.cols = cols
+        self.rows = rows
+        self.pid = None
+        self.fd = None
+        self.out_buf = bytearray()
+        self.last_flush = time.time()
+        self.input_consumed_bytes = 0  # bytes acked back to server
+        self.spawn(cols, rows)
+
+    def spawn(self, cols, rows):
+        env = os.environ.copy()
+        env["TERM"] = "xterm-256color"
+        env["LANG"] = env.get("LANG", "C.UTF-8")
+        env["PS1"] = r"\u@\h:\w\$ "
+        pid, fd = pty.fork()
+        if pid == 0:
+            # Child
+            try:
+                os.execvpe("/bin/bash", ["/bin/bash", "-il"], env)
+            except Exception:
+                os.execvpe("/bin/sh", ["/bin/sh", "-i"], env)
+        self.pid = pid
+        self.fd = fd
+        self.set_size(cols, rows)
+        # non-blocking
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    def set_size(self, cols, rows):
+        try:
+            fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
+                        struct.pack("HHHH", rows, cols, 0, 0))
+            self.cols, self.rows = cols, rows
+        except Exception:
+            pass
+
+    def write_input(self, data: bytes):
+        if not data: return
+        try:
+            os.write(self.fd, data)
+        except (OSError, BrokenPipeError):
+            pass
+
+    def read_output(self):
+        try:
+            chunk = os.read(self.fd, 65536)
+            if chunk:
+                self.out_buf.extend(chunk)
+        except BlockingIOError:
+            pass
+        except OSError:
+            return False  # PTY closed
+        return True
+
+    def alive(self):
+        if self.pid is None: return False
+        try:
+            pid, _ = os.waitpid(self.pid, os.WNOHANG)
+            return pid == 0
+        except ChildProcessError:
+            return False
+
+    def close(self):
+        try:
+            if self.fd is not None:
+                os.close(self.fd)
+        except OSError:
+            pass
+        try:
+            if self.pid:
+                os.kill(self.pid, signal.SIGHUP)
+        except ProcessLookupError:
+            pass
+        self.fd = None
+        self.pid = None
+
+sessions: dict[str, Session] = {}
+
+def main():
+    print("[fleet-terminal] starting", flush=True)
+    while True:
+        try:
+            tick()
+        except Exception as e:
+            print(f"[fleet-terminal] error: {e}", file=sys.stderr, flush=True)
+            traceback.print_exc()
+            time.sleep(2)
+
+def tick():
+    # 1. Read PTY output for every alive session
+    outputs = []
+    dead = []
+    for sid, s in sessions.items():
+        if not s.read_output() or not s.alive():
+            dead.append(sid)
+        if s.out_buf and (len(s.out_buf) >= OUTPUT_FLUSH_BYTES or
+                          (time.time() - s.last_flush) * 1000 >= OUTPUT_FLUSH_MS):
+            b64 = base64.b64encode(bytes(s.out_buf)).decode()
+            outputs.append({"session_id": sid, "b64": b64})
+            s.out_buf.clear()
+            s.last_flush = time.time()
+
+    # 2. Build acks for input consumed last round
+    acks = {sid: s.input_consumed_bytes for sid, s in sessions.items() if s.input_consumed_bytes > 0}
+    for sid in acks: sessions[sid].input_consumed_bytes = 0
+
+    # 3. Poll the server
+    body = {}
+    if acks: body["acks"] = acks
+    if outputs: body["outputs"] = outputs
+
+    try:
+        resp = post_json("/api/agent/terminal", body)
+    except Exception as e:
+        print(f"[fleet-terminal] poll failed: {e}", file=sys.stderr, flush=True)
+        time.sleep(POLL_INTERVAL_IDLE)
+        return
+
+    server_sessions = {s["id"]: s for s in resp.get("sessions", [])}
+
+    # 4. Spawn / update / close to match server view
+    for sid, info in server_sessions.items():
+        if info["status"] == "closed":
+            if sid in sessions:
+                sessions[sid].close()
+                del sessions[sid]
+            continue
+        if sid not in sessions:
+            try:
+                sessions[sid] = Session(sid, info["cols"], info["rows"])
+                print(f"[fleet-terminal] spawned session {sid[:8]} ({info['cols']}x{info['rows']})", flush=True)
+            except Exception as e:
+                print(f"[fleet-terminal] spawn failed: {e}", file=sys.stderr, flush=True)
+                continue
+        s = sessions[sid]
+        if info["cols"] != s.cols or info["rows"] != s.rows:
+            s.set_size(info["cols"], info["rows"])
+
+        # Forward input bytes
+        ib64 = info.get("input_b64") or ""
+        if ib64:
+            try:
+                raw = base64.b64decode(ib64)
+                s.write_input(raw)
+                s.input_consumed_bytes = len(ib64)  # ack the base64 chars
+            except Exception:
+                s.input_consumed_bytes = len(ib64)  # don't loop on bad input
+
+    # 5. Reap any dead PTYs
+    for sid in dead:
+        if sid in sessions:
+            sessions[sid].close()
+            del sessions[sid]
+            print(f"[fleet-terminal] session {sid[:8]} died", flush=True)
+
+    time.sleep(POLL_INTERVAL_ACTIVE if sessions else POLL_INTERVAL_IDLE)
+
+if __name__ == "__main__":
+    main()
+PYAGENT
+chmod +x "$INSTALL_DIR/terminal.py"
 
 cat > /etc/fleet-agent.conf <<EOF
 FLEET_URL="$FLEET_URL"
@@ -219,20 +333,21 @@ FLEET_TOKEN="$FLEET_TOKEN"
 EOF
 chmod 600 /etc/fleet-agent.conf
 
-if ! command -v jq >/dev/null 2>&1; then
+# Install dependencies
+if ! command -v jq >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null 2>&1 || true
-    DEBIAN_FRONTEND=noninteractive apt-get install -y jq curl >/dev/null 2>&1 || true
+    DEBIAN_FRONTEND=noninteractive apt-get install -y jq curl python3 >/dev/null 2>&1 || true
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y jq curl >/dev/null 2>&1 || true
+    dnf install -y jq curl python3 >/dev/null 2>&1 || true
   elif command -v yum >/dev/null 2>&1; then
-    yum install -y jq curl >/dev/null 2>&1 || true
+    yum install -y jq curl python3 >/dev/null 2>&1 || true
   fi
 fi
 
 cat > /etc/systemd/system/fleet-agent.service <<EOF
 [Unit]
-Description=Fleet agent
+Description=Fleet metrics agent
 After=network-online.target
 Wants=network-online.target
 
@@ -246,9 +361,27 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+cat > /etc/systemd/system/fleet-terminal.service <<EOF
+[Unit]
+Description=Fleet terminal agent (PTY)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/fleet-agent/terminal.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
 systemctl enable --now fleet-agent.service
+systemctl enable --now fleet-terminal.service
 
 echo ""
-echo "✓ Fleet agent installed and running."
+echo "✓ Fleet agent + terminal installed and running."
 echo "  Logs: journalctl -u fleet-agent -f"
+echo "        journalctl -u fleet-terminal -f"

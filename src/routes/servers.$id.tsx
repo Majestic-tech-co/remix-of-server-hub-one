@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { LiveTerminal } from "@/components/LiveTerminal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Terminal as TermIcon, Clock } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -21,7 +22,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/servers/$id")({
   head: () => ({
@@ -62,59 +62,18 @@ interface MetricRow {
   uptime_seconds: number | null;
 }
 
-interface CommandRow {
-  id: string;
-  command: string;
-  status: "pending" | "running" | "completed" | "failed";
-  exit_code: number | null;
-  stdout: string | null;
-  stderr: string | null;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-}
-
-const PRESETS = [
-  { label: "apt upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
-  { label: "dnf upgrade", cmd: "dnf -y upgrade" },
-  { label: "df -h", cmd: "df -h" },
-  { label: "free -h", cmd: "free -h" },
-  { label: "top procs", cmd: "ps aux --sort=-%cpu | head -15" },
-  { label: "uptime", cmd: "uptime" },
-  { label: "journal -50", cmd: "journalctl -n 50 --no-pager" },
-  { label: "reboot (1m)", cmd: "shutdown -r +1 'Fleet: scheduled reboot — cancel with: shutdown -c'" },
-];
-
-// Commands the UI asks the user to confirm before sending.
-const DANGEROUS = [
-  /\breboot\b/i,
-  /\bshutdown\b/i,
-  /\bhalt\b/i,
-  /\bpoweroff\b/i,
-  /\bmkfs\b/i,
-  /\bdd\s+if=/i,
-  /\brm\s+-rf?\s+\/(?!\S*tmp)/i,
-  /:\(\)\s*\{.*\};:/,
-  /\bsystemctl\s+(stop|disable|mask)\s+fleet-agent\b/i,
-];
-function isDangerous(cmd: string) {
-  return DANGEROUS.some((r) => r.test(cmd));
-}
 
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
   const { user } = useAuth();
   const [server, setServer] = useState<ServerRow | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
-  const [commands, setCommands] = useState<CommandRow[]>([]);
-  const [cmdInput, setCmdInput] = useState("");
-  const [running, setRunning] = useState(false);
   const [rangeMin, setRangeMin] = useState<number>(60);
 
   const loadAll = async () => {
     if (!user) return;
     const since = new Date(Date.now() - rangeMin * 60 * 1000).toISOString();
-    const [{ data: s }, { data: m }, { data: c }] = await Promise.all([
+    const [{ data: s }, { data: m }] = await Promise.all([
       supabase.from("servers").select("*").eq("id", id).single(),
       supabase
         .from("metrics")
@@ -123,30 +82,17 @@ function ServerDetail() {
         .gte("recorded_at", since)
         .order("recorded_at", { ascending: true })
         .limit(5000),
-      supabase
-        .from("commands")
-        .select("*")
-        .eq("server_id", id)
-        .order("created_at", { ascending: false })
-        .limit(20),
     ]);
     if (s) setServer(s as ServerRow);
     setMetrics((m ?? []) as MetricRow[]);
-    setCommands((c ?? []) as CommandRow[]);
   };
 
-  // Poll fast (2s) when a command is in flight so live output streams in,
-  // otherwise fall back to 8s to keep request volume low.
-  const hasActiveCommand = useMemo(
-    () => commands.some((c) => c.status === "pending" || c.status === "running"),
-    [commands],
-  );
   useEffect(() => {
     loadAll();
-    const i = setInterval(loadAll, hasActiveCommand ? 2000 : 8000);
+    const i = setInterval(loadAll, 8000);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user, rangeMin, hasActiveCommand]);
+  }, [id, user, rangeMin]);
 
   const latest = metrics[metrics.length - 1];
   const online = server?.last_seen_at && Date.now() - new Date(server.last_seen_at).getTime() < 90_000;
@@ -189,28 +135,6 @@ function ServerDetail() {
 
   const ticks = useMemo(() => makeTicks(domain[0], domain[1], 6), [domain]);
 
-  const submitCommand = async (cmd: string) => {
-    if (!user || !cmd.trim()) return;
-    if (isDangerous(cmd)) {
-      const ok = window.confirm(
-        `This command looks destructive:\n\n  ${cmd}\n\nRun it on "${server?.name ?? "this server"}"?`,
-      );
-      if (!ok) return;
-    }
-    setRunning(true);
-    const { error } = await supabase.from("commands").insert({
-      user_id: user.id,
-      server_id: id,
-      command: cmd,
-    });
-    setRunning(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Queued — agent will pick it up within 15s");
-      setCmdInput("");
-      loadAll();
-    }
-  };
 
   if (!server) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
@@ -367,12 +291,10 @@ function ServerDetail() {
         </TabsContent>
 
         <TabsContent value="commands" className="mt-6">
-          <Terminal
+          <LiveTerminal
+            serverId={server.id}
             serverName={server.hostname || server.name}
             online={!!online}
-            commands={commands}
-            onSubmit={submitCommand}
-            running={running}
           />
         </TabsContent>
       </Tabs>
@@ -495,180 +417,6 @@ function labelFor(min: number) {
 }
 
 
-function Terminal({
-  serverName,
-  online,
-  commands,
-  onSubmit,
-  running,
-}: {
-  serverName: string;
-  online: boolean;
-  commands: CommandRow[];
-  onSubmit: (cmd: string) => void;
-  running: boolean;
-}) {
-  const [input, setInput] = useState("");
-  const [history, setHistory] = useState<string[]>([]);
-  const [hIdx, setHIdx] = useState<number>(-1);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Oldest → newest, filter cleared
-  const visible = useMemo(
-    () => [...commands].reverse().filter((c) => !hidden.has(c.id)),
-    [commands, hidden],
-  );
-
-  // Only autoscroll when a new command id appears or output of the latest one grows.
-  const lastSigRef = useRef<string>("");
-  useEffect(() => {
-    const sig = visible
-      .map((c) => `${c.id}:${c.status}:${(c.stdout?.length ?? 0) + (c.stderr?.length ?? 0)}`)
-      .join("|");
-    if (sig === lastSigRef.current) return;
-    lastSigRef.current = sig;
-    const el = scrollRef.current;
-    if (!el) return;
-    // Stick to bottom only if user is already near it.
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [visible]);
-
-  const focusInput = () => inputRef.current?.focus();
-
-  const handleSubmit = () => {
-    const cmd = input.trim();
-    if (!cmd) return;
-    if (cmd === "clear" || cmd === "cls") {
-      setHidden(new Set(commands.map((c) => c.id)));
-      setHistory((h) => [cmd, ...h]);
-      setInput("");
-      setHIdx(-1);
-      return;
-    }
-    onSubmit(cmd);
-    setHistory((h) => [cmd, ...h]);
-    setInput("");
-    setHIdx(-1);
-  };
-
-  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSubmit();
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const next = Math.min(hIdx + 1, history.length - 1);
-      if (next >= 0 && history[next] != null) {
-        setHIdx(next);
-        setInput(history[next]);
-      }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const next = hIdx - 1;
-      if (next < 0) {
-        setHIdx(-1);
-        setInput("");
-      } else {
-        setHIdx(next);
-        setInput(history[next]);
-      }
-    } else if (e.key === "l" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      setHidden(new Set(commands.map((c) => c.id)));
-    }
-  };
-
-  const prompt = `root@${serverName}:~#`;
-
-  return (
-    <Card className="overflow-hidden border-border/60 bg-terminal" onClick={focusInput}>
-      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <TermIcon className="h-3.5 w-3.5" />
-          <span>{serverName} · interactive shell</span>
-          <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {PRESETS.map((p) => (
-            <button
-              key={p.label}
-              onClick={(e) => { e.stopPropagation(); onSubmit(p.cmd); }}
-              disabled={running}
-              className="rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div
-        ref={scrollRef}
-        className="h-[60vh] min-h-[420px] overflow-auto p-4 font-mono text-[12.5px] leading-relaxed text-terminal-foreground"
-      >
-        {!online && (
-          <div className="mb-3 text-warning">
-            ⚠ Server is offline — commands will queue and run when the agent reconnects.
-          </div>
-        )}
-        {visible.length === 0 && (
-          <div className="text-muted-foreground">
-            Welcome to Fleet shell. Type a command and press Enter. Use ↑/↓ for history, `clear` to wipe.
-          </div>
-        )}
-        {visible.map((c) => {
-          const dur = cmdDuration(c);
-          const ok = c.status === "completed" && (c.exit_code ?? 0) === 0;
-          return (
-            <div key={c.id} className="mb-3">
-              <div className="flex items-baseline gap-2">
-                <span className="text-primary">{prompt}</span>
-                <span className="whitespace-pre-wrap break-all">{c.command}</span>
-              </div>
-              {c.status === "pending" && (
-                <div className="mt-0.5 text-muted-foreground">[queued — waiting for agent…]</div>
-              )}
-              {c.status === "running" && (
-                <div className="mt-0.5 text-warning">[running… {dur}]</div>
-              )}
-              {c.stdout && (
-                <pre className="mt-0.5 whitespace-pre-wrap break-words text-terminal-foreground">{c.stdout.replace(/\n+$/, "")}</pre>
-              )}
-              {c.stderr && (
-                <pre className="mt-0.5 whitespace-pre-wrap break-words text-destructive">{c.stderr.replace(/\n+$/, "")}</pre>
-              )}
-              {(c.status === "completed" || c.status === "failed") && (
-                <div className={`mt-0.5 text-[11px] ${ok ? "text-muted-foreground" : "text-destructive"}`}>
-                  [exit {c.exit_code ?? "?"} · {dur}]
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="flex items-baseline gap-2">
-          <span className="text-primary">{prompt}</span>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKey}
-            spellCheck={false}
-            autoComplete="off"
-            autoCapitalize="off"
-            className="flex-1 border-0 bg-transparent p-0 font-mono text-[12.5px] text-terminal-foreground outline-none placeholder:text-muted-foreground/60"
-            placeholder={running ? "queuing…" : "type a command"}
-            autoFocus
-          />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function Tile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
     <Card className="p-5">
@@ -697,13 +445,4 @@ function timeAgo(iso: string) {
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
   return `${Math.round(s / 86400)}d ago`;
 }
-function cmdDuration(c: CommandRow) {
-  const start = c.started_at ? new Date(c.started_at).getTime() : new Date(c.created_at).getTime();
-  const end = c.completed_at ? new Date(c.completed_at).getTime() : Date.now();
-  const ms = Math.max(0, end - start);
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  const m = Math.floor(ms / 60_000);
-  const s = Math.round((ms % 60_000) / 1000);
-  return `${m}m${s.toString().padStart(2, "0")}s`;
-}
+
