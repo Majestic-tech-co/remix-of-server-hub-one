@@ -62,44 +62,6 @@ interface MetricRow {
   uptime_seconds: number | null;
 }
 
-interface CommandRow {
-  id: string;
-  command: string;
-  status: "pending" | "running" | "completed" | "failed";
-  exit_code: number | null;
-  stdout: string | null;
-  stderr: string | null;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-}
-
-const PRESETS = [
-  { label: "apt upgrade", cmd: "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade" },
-  { label: "dnf upgrade", cmd: "dnf -y upgrade" },
-  { label: "df -h", cmd: "df -h" },
-  { label: "free -h", cmd: "free -h" },
-  { label: "top procs", cmd: "ps aux --sort=-%cpu | head -15" },
-  { label: "uptime", cmd: "uptime" },
-  { label: "journal -50", cmd: "journalctl -n 50 --no-pager" },
-  { label: "reboot (1m)", cmd: "shutdown -r +1 'Fleet: scheduled reboot — cancel with: shutdown -c'" },
-];
-
-// Commands the UI asks the user to confirm before sending.
-const DANGEROUS = [
-  /\breboot\b/i,
-  /\bshutdown\b/i,
-  /\bhalt\b/i,
-  /\bpoweroff\b/i,
-  /\bmkfs\b/i,
-  /\bdd\s+if=/i,
-  /\brm\s+-rf?\s+\/(?!\S*tmp)/i,
-  /:\(\)\s*\{.*\};:/,
-  /\bsystemctl\s+(stop|disable|mask)\s+fleet-agent\b/i,
-];
-function isDangerous(cmd: string) {
-  return DANGEROUS.some((r) => r.test(cmd));
-}
 
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
@@ -173,28 +135,8 @@ function ServerDetail() {
 
   const ticks = useMemo(() => makeTicks(domain[0], domain[1], 6), [domain]);
 
-  const submitCommand = async (cmd: string) => {
-    if (!user || !cmd.trim()) return;
-    if (isDangerous(cmd)) {
-      const ok = window.confirm(
-        `This command looks destructive:\n\n  ${cmd}\n\nRun it on "${server?.name ?? "this server"}"?`,
-      );
-      if (!ok) return;
-    }
-    setRunning(true);
-    const { error } = await supabase.from("commands").insert({
-      user_id: user.id,
-      server_id: id,
-      command: cmd,
-    });
-    setRunning(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Queued — agent will pick it up within 15s");
-      setCmdInput("");
-      loadAll();
-    }
-  };
+  const submitCommand = undefined;
+
 
   if (!server) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
