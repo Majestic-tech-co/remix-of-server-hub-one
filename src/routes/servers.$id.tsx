@@ -293,12 +293,10 @@ function ServerDetail() {
         </TabsContent>
 
         <TabsContent value="commands" className="mt-6">
-          <Terminal
+          <LiveTerminal
+            serverId={server.id}
             serverName={server.hostname || server.name}
             online={!!online}
-            commands={commands}
-            onSubmit={submitCommand}
-            running={running}
           />
         </TabsContent>
       </Tabs>
