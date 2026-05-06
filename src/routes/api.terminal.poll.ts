@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 const Schema = z.object({
   session_id: z.string().uuid(),
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/api/terminal/poll")({
 
         // Build update payload
         const now = new Date().toISOString();
-        const update: Record<string, unknown> = { last_client_poll_at: now };
+        const update: TablesUpdate<"terminal_sessions"> = { last_client_poll_at: now };
 
         if (data.close) {
           update.status = "closed";
