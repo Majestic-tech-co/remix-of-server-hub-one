@@ -162,6 +162,71 @@ export type Database = {
         }
         Relationships: []
       }
+      terminal_sessions: {
+        Row: {
+          agent_input_ack: number
+          client_output_ack: number
+          closed_at: string | null
+          cols: number
+          created_at: string
+          id: string
+          input_buffer: string
+          input_seq: number
+          last_agent_poll_at: string | null
+          last_client_poll_at: string
+          output_buffer: string
+          output_seq: number
+          rows: number
+          server_id: string
+          status: Database["public"]["Enums"]["terminal_session_status"]
+          user_id: string
+        }
+        Insert: {
+          agent_input_ack?: number
+          client_output_ack?: number
+          closed_at?: string | null
+          cols?: number
+          created_at?: string
+          id?: string
+          input_buffer?: string
+          input_seq?: number
+          last_agent_poll_at?: string | null
+          last_client_poll_at?: string
+          output_buffer?: string
+          output_seq?: number
+          rows?: number
+          server_id: string
+          status?: Database["public"]["Enums"]["terminal_session_status"]
+          user_id: string
+        }
+        Update: {
+          agent_input_ack?: number
+          client_output_ack?: number
+          closed_at?: string | null
+          cols?: number
+          created_at?: string
+          id?: string
+          input_buffer?: string
+          input_seq?: number
+          last_agent_poll_at?: string | null
+          last_client_poll_at?: string
+          output_buffer?: string
+          output_seq?: number
+          rows?: number
+          server_id?: string
+          status?: Database["public"]["Enums"]["terminal_session_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminal_sessions_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -171,6 +236,7 @@ export type Database = {
     }
     Enums: {
       command_status: "pending" | "running" | "completed" | "failed"
+      terminal_session_status: "requested" | "active" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -299,6 +365,7 @@ export const Constants = {
   public: {
     Enums: {
       command_status: ["pending", "running", "completed", "failed"],
+      terminal_session_status: ["requested", "active", "closed"],
     },
   },
 } as const
