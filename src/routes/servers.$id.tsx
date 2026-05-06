@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { LiveTerminal } from "@/components/LiveTerminal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Terminal as TermIcon, Clock } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -21,7 +22,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/servers/$id")({
   head: () => ({
@@ -106,15 +106,12 @@ function ServerDetail() {
   const { user } = useAuth();
   const [server, setServer] = useState<ServerRow | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
-  const [commands, setCommands] = useState<CommandRow[]>([]);
-  const [cmdInput, setCmdInput] = useState("");
-  const [running, setRunning] = useState(false);
   const [rangeMin, setRangeMin] = useState<number>(60);
 
   const loadAll = async () => {
     if (!user) return;
     const since = new Date(Date.now() - rangeMin * 60 * 1000).toISOString();
-    const [{ data: s }, { data: m }, { data: c }] = await Promise.all([
+    const [{ data: s }, { data: m }] = await Promise.all([
       supabase.from("servers").select("*").eq("id", id).single(),
       supabase
         .from("metrics")
@@ -123,30 +120,17 @@ function ServerDetail() {
         .gte("recorded_at", since)
         .order("recorded_at", { ascending: true })
         .limit(5000),
-      supabase
-        .from("commands")
-        .select("*")
-        .eq("server_id", id)
-        .order("created_at", { ascending: false })
-        .limit(20),
     ]);
     if (s) setServer(s as ServerRow);
     setMetrics((m ?? []) as MetricRow[]);
-    setCommands((c ?? []) as CommandRow[]);
   };
 
-  // Poll fast (2s) when a command is in flight so live output streams in,
-  // otherwise fall back to 8s to keep request volume low.
-  const hasActiveCommand = useMemo(
-    () => commands.some((c) => c.status === "pending" || c.status === "running"),
-    [commands],
-  );
   useEffect(() => {
     loadAll();
-    const i = setInterval(loadAll, hasActiveCommand ? 2000 : 8000);
+    const i = setInterval(loadAll, 8000);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user, rangeMin, hasActiveCommand]);
+  }, [id, user, rangeMin]);
 
   const latest = metrics[metrics.length - 1];
   const online = server?.last_seen_at && Date.now() - new Date(server.last_seen_at).getTime() < 90_000;
