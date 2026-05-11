@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2, Activity, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -53,6 +53,11 @@ interface MetricRow {
   cpu_percent: number | null;
   memory_percent: number | null;
   disk_percent: number | null;
+  disk_used_gb: number | null;
+  disk_total_gb: number | null;
+  load_1: number | null;
+  net_rx_kbs: number | null;
+  net_tx_kbs: number | null;
   recorded_at: string;
 }
 
@@ -77,7 +82,7 @@ function Dashboard() {
         const ids = srv.map((s) => s.id);
         const { data: m } = await supabase
           .from("metrics")
-          .select("server_id, cpu_percent, memory_percent, disk_percent, recorded_at")
+          .select("server_id, cpu_percent, memory_percent, disk_percent, disk_used_gb, disk_total_gb, load_1, net_rx_kbs, net_tx_kbs, recorded_at")
           .in("server_id", ids)
           .order("recorded_at", { ascending: false })
           .limit(500);
@@ -213,6 +218,37 @@ function ServerCard({
         <Metric icon={<HardDrive className="h-3.5 w-3.5" />} label="DISK" value={metric?.disk_percent} />
       </div>
 
+      <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/50 pt-3">
+        <SubMetric
+          icon={<Activity className="h-3.5 w-3.5" />}
+          label="LOAD"
+          value={metric?.load_1 == null ? "—" : Number(metric.load_1).toFixed(2)}
+        />
+        <SubMetric
+          icon={<HardDrive className="h-3.5 w-3.5" />}
+          label="USED"
+          value={
+            metric?.disk_used_gb == null
+              ? "—"
+              : `${Math.round(Number(metric.disk_used_gb))}/${Math.round(Number(metric.disk_total_gb ?? 0))}G`
+          }
+        />
+        <SubMetric
+          icon={
+            <span className="flex items-center">
+              <ArrowDown className="h-3 w-3" />
+              <ArrowUp className="h-3 w-3" />
+            </span>
+          }
+          label="NET"
+          value={
+            metric?.net_rx_kbs == null && metric?.net_tx_kbs == null
+              ? "—"
+              : `${formatKbs(metric?.net_rx_kbs)}↓ ${formatKbs(metric?.net_tx_kbs)}↑`
+          }
+        />
+      </div>
+
       {server.tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-1.5">
           {server.tags.map((t) => (
@@ -242,6 +278,24 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
       </div>
     </div>
   );
+}
+
+function SubMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 font-mono text-[10px] uppercase text-muted-foreground">
+        {icon} {label}
+      </div>
+      <div className="mt-1 truncate font-mono text-xs font-medium text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function formatKbs(v: number | null | undefined) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (n >= 1024) return `${(n / 1024).toFixed(1)}M`;
+  return `${Math.round(n)}K`;
 }
 
 function EmptyState() {
