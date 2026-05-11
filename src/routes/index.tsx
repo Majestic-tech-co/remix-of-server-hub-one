@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2, Activity, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
