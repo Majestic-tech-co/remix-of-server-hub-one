@@ -1,0 +1,1 @@
+REVOKE SELECT ON public.servers, public.commands, public.metrics, public.terminal_sessions FROM anon;
