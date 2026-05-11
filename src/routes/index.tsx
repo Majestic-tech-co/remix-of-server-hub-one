@@ -82,7 +82,7 @@ function Dashboard() {
         const ids = srv.map((s) => s.id);
         const { data: m } = await supabase
           .from("metrics")
-          .select("server_id, cpu_percent, memory_percent, disk_percent, recorded_at")
+          .select("server_id, cpu_percent, memory_percent, disk_percent, disk_used_gb, disk_total_gb, load_1, net_rx_kbs, net_tx_kbs, recorded_at")
           .in("server_id", ids)
           .order("recorded_at", { ascending: false })
           .limit(500);
