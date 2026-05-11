@@ -218,6 +218,37 @@ function ServerCard({
         <Metric icon={<HardDrive className="h-3.5 w-3.5" />} label="DISK" value={metric?.disk_percent} />
       </div>
 
+      <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/50 pt-3">
+        <SubMetric
+          icon={<Activity className="h-3.5 w-3.5" />}
+          label="LOAD"
+          value={metric?.load_1 == null ? "—" : Number(metric.load_1).toFixed(2)}
+        />
+        <SubMetric
+          icon={<HardDrive className="h-3.5 w-3.5" />}
+          label="USED"
+          value={
+            metric?.disk_used_gb == null
+              ? "—"
+              : `${Math.round(Number(metric.disk_used_gb))}/${Math.round(Number(metric.disk_total_gb ?? 0))}G`
+          }
+        />
+        <SubMetric
+          icon={
+            <span className="flex items-center">
+              <ArrowDown className="h-3 w-3" />
+              <ArrowUp className="h-3 w-3" />
+            </span>
+          }
+          label="NET"
+          value={
+            metric?.net_rx_kbs == null && metric?.net_tx_kbs == null
+              ? "—"
+              : `${formatKbs(metric?.net_rx_kbs)}↓ ${formatKbs(metric?.net_tx_kbs)}↑`
+          }
+        />
+      </div>
+
       {server.tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-1.5">
           {server.tags.map((t) => (
