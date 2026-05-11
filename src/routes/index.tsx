@@ -53,6 +53,11 @@ interface MetricRow {
   cpu_percent: number | null;
   memory_percent: number | null;
   disk_percent: number | null;
+  disk_used_gb: number | null;
+  disk_total_gb: number | null;
+  load_1: number | null;
+  net_rx_kbs: number | null;
+  net_tx_kbs: number | null;
   recorded_at: string;
 }
 
