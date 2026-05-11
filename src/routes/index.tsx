@@ -280,6 +280,24 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
   );
 }
 
+function SubMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 font-mono text-[10px] uppercase text-muted-foreground">
+        {icon} {label}
+      </div>
+      <div className="mt-1 truncate font-mono text-xs font-medium text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function formatKbs(v: number | null | undefined) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (n >= 1024) return `${(n / 1024).toFixed(1)}M`;
+  return `${Math.round(n)}K`;
+}
+
 function EmptyState() {
   return (
     <Card className="flex flex-col items-center justify-center gap-3 p-12 text-center">
