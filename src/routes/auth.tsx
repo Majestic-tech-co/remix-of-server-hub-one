@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Activity, Server, Terminal, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -44,6 +45,9 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
+      <div className="absolute right-4 top-4 z-50">
+        <ThemeToggle />
+      </div>
       {/* Left: branding panel */}
       <div className="relative hidden flex-col justify-between border-r border-border/60 bg-card/40 p-10 lg:flex">
         <div className="flex items-center gap-2.5">

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, Server, Activity } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
               {user?.email}
             </span>
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"

@@ -91,6 +91,46 @@
   --chart-5: oklch(0.7 0.16 300);  /* purple */
 }
 
+.light {
+  --background: oklch(0.98 0.004 250);
+  --foreground: oklch(0.2 0.02 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 250);
+
+  --primary: oklch(0.55 0.18 145);
+  --primary-foreground: oklch(0.98 0.004 250);
+
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.2 0.02 250);
+
+  --muted: oklch(0.95 0.008 250);
+  --muted-foreground: oklch(0.45 0.02 250);
+
+  --accent: oklch(0.92 0.03 200);
+  --accent-foreground: oklch(0.2 0.02 250);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --success: oklch(0.55 0.18 145);
+  --success-foreground: oklch(0.98 0.004 250);
+
+  --warning: oklch(0.7 0.17 75);
+  --warning-foreground: oklch(0.2 0.02 250);
+
+  --terminal: oklch(0.16 0.01 250);
+  --terminal-foreground: oklch(0.85 0.15 145);
+
+  --border: oklch(0.88 0.01 250);
+  --input: oklch(0.92 0.01 250);
+  --ring: oklch(0.55 0.18 145);
+}
+
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -105,10 +145,11 @@
 
   body {
     background-image:
-      radial-gradient(circle at 1px 1px, oklch(0.3 0.02 250 / 0.4) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, var(--color-border) 1px, transparent 0);
     background-size: 32px 32px;
     background-attachment: fixed;
   }
+
 
   code, pre, .font-mono {
     font-family: var(--font-mono);
