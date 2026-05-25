@@ -145,10 +145,11 @@
 
   body {
     background-image:
-      radial-gradient(circle at 1px 1px, oklch(0.3 0.02 250 / 0.4) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, var(--color-border) 1px, transparent 0);
     background-size: 32px 32px;
     background-attachment: fixed;
   }
+
 
   code, pre, .font-mono {
     font-family: var(--font-mono);
