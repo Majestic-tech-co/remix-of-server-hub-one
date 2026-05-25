@@ -40,6 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
               {user?.email}
             </span>
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"
