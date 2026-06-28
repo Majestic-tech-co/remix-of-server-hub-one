@@ -341,6 +341,9 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [tags, setTags] = useState("");
+  const [type, setType] = useState<"local" | "aws">("local");
+  const [region, setRegion] = useState("");
+  const [instanceId, setInstanceId] = useState("");
   const [created, setCreated] = useState<ServerRow | null>(null);
 
   const installCmd = useMemo(() => {
@@ -355,7 +358,14 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
     const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
     const { data, error } = await supabase
       .from("servers")
-      .insert({ user_id: user.id, name, tags: tagList })
+      .insert({
+        user_id: user.id,
+        name,
+        tags: tagList,
+        type,
+        region: type === "aws" ? region || null : null,
+        instance_id: type === "aws" ? instanceId || null : null,
+      })
       .select()
       .single();
     if (error) {
@@ -367,8 +377,7 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   };
 
   const reset = () => {
-    setName("");
-    setTags("");
+    setName(""); setTags(""); setType("local"); setRegion(""); setInstanceId("");
     setCreated(null);
   };
 
@@ -393,6 +402,35 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="prod-web-01" />
               </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <div className="flex gap-2">
+                  {(["local", "aws"] as const).map((t) => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setType(t)}
+                      className={`flex-1 rounded-md border px-3 py-2 font-mono text-xs uppercase transition-colors ${
+                        type === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {type === "aws" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="region">Region</Label>
+                    <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="us-east-1" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instance">Instance type</Label>
+                    <Input id="instance" value={instanceId} onChange={(e) => setInstanceId(e.target.value)} placeholder="t3.medium" />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="prod, web, eu" />
