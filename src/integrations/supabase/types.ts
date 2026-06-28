@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_runs: {
+        Row: {
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "automation_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          script_content: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          script_content: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          script_content?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       commands: {
         Row: {
           command: string
@@ -57,6 +122,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "commands_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_metrics: {
+        Row: {
+          created_at: string
+          currency: string
+          daily_cost: number
+          day: string
+          id: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          daily_cost?: number
+          day: string
+          id?: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          daily_cost?: number
+          day?: string
+          id?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_metrics_server_id_fkey"
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
@@ -129,11 +232,14 @@ export type Database = {
           created_at: string
           hostname: string | null
           id: string
+          instance_id: string | null
           ip_address: string | null
           last_seen_at: string | null
           name: string
           os: string | null
+          region: string | null
           tags: string[]
+          type: string
           user_id: string
         }
         Insert: {
@@ -141,11 +247,14 @@ export type Database = {
           created_at?: string
           hostname?: string | null
           id?: string
+          instance_id?: string | null
           ip_address?: string | null
           last_seen_at?: string | null
           name: string
           os?: string | null
+          region?: string | null
           tags?: string[]
+          type?: string
           user_id: string
         }
         Update: {
@@ -153,14 +262,72 @@ export type Database = {
           created_at?: string
           hostname?: string | null
           id?: string
+          instance_id?: string | null
           ip_address?: string | null
           last_seen_at?: string | null
           name?: string
           os?: string | null
+          region?: string | null
           tags?: string[]
+          type?: string
           user_id?: string
         }
         Relationships: []
+      }
+      task_logs: {
+        Row: {
+          command_id: string | null
+          created_at: string
+          id: string
+          output_log: string | null
+          run_id: string
+          server_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          command_id?: string | null
+          created_at?: string
+          id?: string
+          output_log?: string | null
+          run_id: string
+          server_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          command_id?: string | null
+          created_at?: string
+          id?: string
+          output_log?: string | null
+          run_id?: string
+          server_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_logs_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "commands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_logs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_logs_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       terminal_sessions: {
         Row: {
