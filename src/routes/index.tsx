@@ -133,15 +133,29 @@ function Dashboard() {
       ) : servers.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {servers.map((s) => (
-            <ServerCard
-              key={s.id}
-              server={s}
-              metric={latestMetrics[s.id]}
-              onDeleted={() => setServers((prev) => prev.filter((x) => x.id !== s.id))}
-            />
-          ))}
+        <div className="space-y-8">
+          {(["aws", "local"] as const).map((group) => {
+            const list = servers.filter((s) => (s.type ?? "local") === group);
+            if (list.length === 0) return null;
+            return (
+              <div key={group}>
+                <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span>// {group === "aws" ? "AWS instances" : "Local / on-prem"}</span>
+                  <span className="text-foreground/40">({list.length})</span>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {list.map((s) => (
+                    <ServerCard
+                      key={s.id}
+                      server={s}
+                      metric={latestMetrics[s.id]}
+                      onDeleted={() => setServers((prev) => prev.filter((x) => x.id !== s.id))}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
