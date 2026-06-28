@@ -210,9 +210,14 @@ function ServerCard({
               className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`}
             />
             <h3 className="truncate font-medium">{server.name}</h3>
+            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">
+              {server.type ?? "local"}
+            </span>
           </div>
           <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
             {server.hostname || server.ip_address || "no host yet"}
+            {server.instance_id && <span className="ml-2 text-foreground/60">· {server.instance_id}</span>}
+            {server.region && <span className="ml-2">· {server.region}</span>}
           </div>
         </Link>
         <DropdownMenu>
