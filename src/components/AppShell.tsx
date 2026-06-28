@@ -1,61 +1,108 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, Server, Activity } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LogOut, Server, Activity, LayoutDashboard, Play, DollarSign } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import type { ReactNode } from "react";
+
+const items = [
+  { title: "Overview", url: "/overview", icon: LayoutDashboard },
+  { title: "Servers", url: "/", icon: Server, exact: true },
+  { title: "Automation", url: "/automation", icon: Play },
+  { title: "Costs", url: "/costs", icon: DollarSign },
+];
+
+function AppSidebar() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <Link to="/overview" className="flex items-center gap-2.5 px-2 py-1">
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/15">
+            <Activity className="h-4 w-4 text-primary" />
+            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_8px_currentColor]" />
+          </div>
+          <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
+            <span className="font-mono text-sm font-semibold tracking-tight">FLEET</span>
+            <span className="font-mono text-[10px] text-muted-foreground">control center</span>
+          </div>
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => {
+                const active = item.exact ? pathname === item.url : pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                      <Link to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <div className="px-2 pb-1 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
+          v2.0
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-md bg-primary/15">
-              <Activity className="h-4 w-4 text-primary" />
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_8px_currentColor]" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-mono text-sm font-semibold tracking-tight">FLEET</span>
-              <span className="font-mono text-[10px] text-muted-foreground">control center</span>
-            </div>
-          </Link>
-
-          <nav className="flex items-center gap-1">
-            <Link
-              to="/"
-              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&.active]:bg-muted [&.active]:text-foreground"
-              activeOptions={{ exact: true }}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Server className="h-3.5 w-3.5" /> Servers
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <SidebarInset>
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl">
+            <SidebarTrigger />
+            <div className="flex items-center gap-3">
+              <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
+                {user?.email}
               </span>
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
-              {user?.email}
-            </span>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                await signOut();
-                navigate({ to: "/auth" });
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
-    </div>
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await signOut();
+                  navigate({ to: "/auth" });
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </header>
+          <main className="flex-1 p-6 lg:p-8">{children}</main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
