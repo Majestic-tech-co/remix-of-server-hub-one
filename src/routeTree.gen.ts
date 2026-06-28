@@ -9,9 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as CostsRouteImport } from './routes/costs'
+import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServersIdRouteImport } from './routes/servers.$id'
+import { Route as AutomationRunIdRouteImport } from './routes/automation.$runId'
 import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
 import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
 import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
@@ -20,6 +24,21 @@ import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
 import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.command-output'
 
+const OverviewRoute = OverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CostsRoute = CostsRouteImport.update({
+  id: '/costs',
+  path: '/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationRoute = AutomationRouteImport.update({
+  id: '/automation',
+  path: '/automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -34,6 +53,11 @@ const ServersIdRoute = ServersIdRouteImport.update({
   id: '/servers/$id',
   path: '/servers/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationRunIdRoute = AutomationRunIdRouteImport.update({
+  id: '/$runId',
+  path: '/$runId',
+  getParentRoute: () => AutomationRoute,
 } as any)
 const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
   id: '/api/terminal/start',
@@ -74,6 +98,10 @@ const ApiAgentCommandOutputRoute = ApiAgentCommandOutputRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/automation': typeof AutomationRouteWithChildren
+  '/costs': typeof CostsRoute
+  '/overview': typeof OverviewRoute
+  '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
@@ -86,6 +114,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/automation': typeof AutomationRouteWithChildren
+  '/costs': typeof CostsRoute
+  '/overview': typeof OverviewRoute
+  '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
@@ -99,6 +131,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/automation': typeof AutomationRouteWithChildren
+  '/costs': typeof CostsRoute
+  '/overview': typeof OverviewRoute
+  '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
@@ -113,6 +149,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/automation'
+    | '/costs'
+    | '/overview'
+    | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
@@ -125,6 +165,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/automation'
+    | '/costs'
+    | '/overview'
+    | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
@@ -137,6 +181,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/automation'
+    | '/costs'
+    | '/overview'
+    | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
@@ -150,6 +198,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  AutomationRoute: typeof AutomationRouteWithChildren
+  CostsRoute: typeof CostsRoute
+  OverviewRoute: typeof OverviewRoute
   ServersIdRoute: typeof ServersIdRoute
   ApiAgentCommandOutputRoute: typeof ApiAgentCommandOutputRoute
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
@@ -162,6 +213,27 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/overview': {
+      id: '/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/costs': {
+      id: '/costs'
+      path: '/costs'
+      fullPath: '/costs'
+      preLoaderRoute: typeof CostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automation': {
+      id: '/automation'
+      path: '/automation'
+      fullPath: '/automation'
+      preLoaderRoute: typeof AutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -182,6 +254,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/servers/$id'
       preLoaderRoute: typeof ServersIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/automation/$runId': {
+      id: '/automation/$runId'
+      path: '/$runId'
+      fullPath: '/automation/$runId'
+      preLoaderRoute: typeof AutomationRunIdRouteImport
+      parentRoute: typeof AutomationRoute
     }
     '/api/terminal/start': {
       id: '/api/terminal/start'
@@ -235,9 +314,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AutomationRouteChildren {
+  AutomationRunIdRoute: typeof AutomationRunIdRoute
+}
+
+const AutomationRouteChildren: AutomationRouteChildren = {
+  AutomationRunIdRoute: AutomationRunIdRoute,
+}
+
+const AutomationRouteWithChildren = AutomationRoute._addFileChildren(
+  AutomationRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  AutomationRoute: AutomationRouteWithChildren,
+  CostsRoute: CostsRoute,
+  OverviewRoute: OverviewRoute,
   ServersIdRoute: ServersIdRoute,
   ApiAgentCommandOutputRoute: ApiAgentCommandOutputRoute,
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
