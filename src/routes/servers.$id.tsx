@@ -207,6 +207,7 @@ function ServerDetail() {
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
 
         <TabsContent value="charts" className="mt-6 space-y-4">
