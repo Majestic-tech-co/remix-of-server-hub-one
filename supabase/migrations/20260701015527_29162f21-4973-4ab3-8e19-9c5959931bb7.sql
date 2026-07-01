@@ -1,0 +1,1 @@
+ALTER TABLE public.servers ADD COLUMN IF NOT EXISTS connection_notes text;
