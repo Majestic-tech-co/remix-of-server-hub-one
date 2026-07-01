@@ -53,9 +53,13 @@ interface ServerRow {
   hostname: string | null;
   ip_address: string | null;
   os: string | null;
+  type: string | null;
+  region: string | null;
+  instance_id: string | null;
   tags: string[];
   agent_token: string;
   last_seen_at: string | null;
+  connection_notes: string | null;
 }
 
 interface MetricRow {
