@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2, Activity, ArrowDown, ArrowUp } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -344,6 +345,8 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   const [type, setType] = useState<"local" | "aws">("local");
   const [region, setRegion] = useState("");
   const [instanceId, setInstanceId] = useState("");
+  const [connectionNotes, setConnectionNotes] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [created, setCreated] = useState<ServerRow | null>(null);
 
   const installCmd = useMemo(() => {
@@ -365,6 +368,7 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
         type,
         region: type === "aws" ? region || null : null,
         instance_id: type === "aws" ? instanceId || null : null,
+        connection_notes: connectionNotes.trim() || null,
       })
       .select()
       .single();
@@ -378,6 +382,7 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
 
   const reset = () => {
     setName(""); setTags(""); setType("local"); setRegion(""); setInstanceId("");
+    setConnectionNotes(""); setShowAdvanced(false);
     setCreated(null);
   };
 
@@ -435,6 +440,31 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="prod, web, eu" />
               </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  {showAdvanced ? "− Hide advanced" : "+ Show advanced"}
+                </button>
+              </div>
+              {showAdvanced && (
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Connection notes (optional)</Label>
+                  <Textarea
+                    id="notes"
+                    value={connectionNotes}
+                    onChange={(e) => setConnectionNotes(e.target.value)}
+                    placeholder="ssh -i ~/.ssh/my-key.pem ubuntu@1.2.3.4"
+                    className="font-mono text-xs"
+                    rows={3}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Stored as plain text in your private database. Don't paste private key contents — only the login command.
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="submit">Create</Button>

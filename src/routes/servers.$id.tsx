@@ -7,8 +7,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -42,9 +53,13 @@ interface ServerRow {
   hostname: string | null;
   ip_address: string | null;
   os: string | null;
+  type: string | null;
+  region: string | null;
+  instance_id: string | null;
   tags: string[];
   agent_token: string;
   last_seen_at: string | null;
+  connection_notes: string | null;
 }
 
 interface MetricRow {
@@ -192,6 +207,7 @@ function ServerDetail() {
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
           <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
 
         <TabsContent value="charts" className="mt-6 space-y-4">
@@ -297,7 +313,152 @@ function ServerDetail() {
             online={!!online}
           />
         </TabsContent>
+
+        <TabsContent value="info" className="mt-6">
+          <InfoPanel server={server} onUpdated={(s) => setServer(s)} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: ServerRow) => void }) {
+  const [reveal, setReveal] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(server.connection_notes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const openEdit = () => {
+    setDraft(server.connection_notes ?? "");
+    setEditing(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const value = draft.trim() ? draft : null;
+    const { data, error } = await supabase
+      .from("servers")
+      .update({ connection_notes: value })
+      .eq("id", server.id)
+      .select()
+      .single();
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    onUpdated(data as ServerRow);
+    setEditing(false);
+    toast.success("Notes saved");
+  };
+
+  const copy = () => {
+    if (!server.connection_notes) return;
+    navigator.clipboard.writeText(server.connection_notes);
+    toast.success("Copied");
+  };
+
+  const rows: Array<[string, React.ReactNode]> = [
+    ["Name", server.name],
+    ["Hostname", server.hostname || "—"],
+    ["IP address", server.ip_address || "—"],
+    ["OS", server.os || "—"],
+    ["Type", server.type || "local"],
+    ["Region", server.region || "—"],
+    ["Instance", server.instance_id || "—"],
+    [
+      "Tags",
+      server.tags && server.tags.length ? (
+        <div className="flex flex-wrap gap-1">
+          {server.tags.map((t) => (
+            <Badge key={t} variant="secondary" className="font-mono text-[10px]">{t}</Badge>
+          ))}
+        </div>
+      ) : "—",
+    ],
+  ];
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-5">
+        <div className="mb-3 font-mono text-xs uppercase tracking-widest text-muted-foreground">Server info</div>
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex items-start justify-between gap-4 border-b border-border/40 py-2 last:border-0">
+              <dt className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{k}</dt>
+              <dd className="text-right font-mono text-xs text-foreground">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Connection notes</div>
+          <div className="flex items-center gap-1">
+            {server.connection_notes && (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setReveal((r) => !r)}>
+                  {reveal ? <><EyeOff className="h-3.5 w-3.5" /> Hide</> : <><Eye className="h-3.5 w-3.5" /> Reveal</>}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={copy}>
+                  <Copy className="h-3.5 w-3.5" /> Copy
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" size="sm" onClick={openEdit}>
+              <Pencil className="h-3.5 w-3.5" /> {server.connection_notes ? "Edit" : "Add"}
+            </Button>
+          </div>
+        </div>
+
+        {server.connection_notes ? (
+          reveal ? (
+            <pre className="whitespace-pre-wrap break-all rounded-md bg-terminal p-3 font-mono text-xs text-terminal-foreground">
+              {server.connection_notes}
+            </pre>
+          ) : (
+            <button
+              onClick={() => setReveal(true)}
+              className="w-full rounded-md bg-terminal p-3 text-left font-mono text-xs text-muted-foreground hover:text-foreground"
+            >
+              •••••••••••••••••••••  <span className="text-[10px] uppercase tracking-wider">click to reveal</span>
+            </button>
+          )
+        ) : (
+          <p className="font-mono text-xs text-muted-foreground">
+            No notes yet. Paste your one-time <span className="text-foreground">ssh -i key.pem user@host</span> command for reference.
+          </p>
+        )}
+
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Stored as plain text in your private database. Don't paste private key contents here — only the login command.
+        </p>
+      </Card>
+
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit connection notes</DialogTitle>
+            <DialogDescription>
+              A private reminder of how you SSH into this server. Not executed by Fleet.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="ssh -i ~/.ssh/my-key.pem ubuntu@1.2.3.4"
+            className="min-h-32 font-mono text-xs"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Don't paste private key contents. Only the login command / hostname / port.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
