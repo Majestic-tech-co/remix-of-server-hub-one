@@ -345,6 +345,8 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   const [type, setType] = useState<"local" | "aws">("local");
   const [region, setRegion] = useState("");
   const [instanceId, setInstanceId] = useState("");
+  const [connectionNotes, setConnectionNotes] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [created, setCreated] = useState<ServerRow | null>(null);
 
   const installCmd = useMemo(() => {
