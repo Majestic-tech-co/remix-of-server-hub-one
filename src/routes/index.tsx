@@ -368,6 +368,7 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
         type,
         region: type === "aws" ? region || null : null,
         instance_id: type === "aws" ? instanceId || null : null,
+        connection_notes: connectionNotes.trim() || null,
       })
       .select()
       .single();
@@ -381,6 +382,7 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
 
   const reset = () => {
     setName(""); setTags(""); setType("local"); setRegion(""); setInstanceId("");
+    setConnectionNotes(""); setShowAdvanced(false);
     setCreated(null);
   };
 
