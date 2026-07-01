@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
   Area,
   AreaChart,
