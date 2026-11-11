@@ -74,7 +74,7 @@ export const Route = createFileRoute("/api/team/invite")({
           let emailed = false;
           try {
             const { error: mailErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(d.email, {
-              redirectTo: new URL(request.url).origin,
+              redirectTo: new URL(request.url).origin + "/reset-password",
             });
             emailed = !mailErr;
           } catch (e) {

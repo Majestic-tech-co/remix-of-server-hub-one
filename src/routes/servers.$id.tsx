@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
 import { SERVER_COLUMNS, authedPost, buildInstallCommand, buildUninstallCommand } from "@/lib/servers";
+import { useWorkspace } from "@/lib/workspace";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
@@ -81,6 +82,7 @@ interface MetricRow {
 
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
+  const { current, can, setCurrent, workspaces } = useWorkspace();
   const { user } = useAuth();
   const [server, setServer] = useState<ServerRow | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
@@ -99,7 +101,12 @@ function ServerDetail() {
         .order("recorded_at", { ascending: true })
         .limit(5000),
     ]);
-    if (s) setServer(s as ServerRow);
+    if (s) {
+      setServer(s as ServerRow);
+      // A link can point at a server in another team you belong to: switch to it.
+      const wsId = (s as { workspace_id?: string }).workspace_id;
+      if (wsId && wsId !== current?.id && workspaces.some((w) => w.id === wsId)) setCurrent(wsId);
+    }
     setMetrics((m ?? []) as MetricRow[]);
   };
 
@@ -192,7 +199,7 @@ function ServerDetail() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <RotateTokenButton serverId={server.id} serverName={server.name} />
+            {can("admin") && <RotateTokenButton serverId={server.id} serverName={server.name} />}
             <Button
               variant="ghost"
               size="sm"
@@ -220,7 +227,7 @@ function ServerDetail() {
       <Tabs defaultValue="charts">
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
-          <TabsTrigger value="commands">Commands</TabsTrigger>
+          {can("member") && <TabsTrigger value="commands">Commands</TabsTrigger>}
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
 
@@ -320,13 +327,13 @@ function ServerDetail() {
           </ChartCard>
         </TabsContent>
 
-        <TabsContent value="commands" className="mt-6">
+        {can("member") && <TabsContent value="commands" className="mt-6">
           <LiveTerminal
             serverId={server.id}
             serverName={server.hostname || server.name}
             online={!!online}
           />
-        </TabsContent>
+        </TabsContent>}
 
         <TabsContent value="info" className="mt-6">
           <InfoPanel server={server} onUpdated={(s) => setServer(s)} />
@@ -341,6 +348,7 @@ function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: Se
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(server.connection_notes ?? "");
   const [saving, setSaving] = useState(false);
+  const { can } = useWorkspace();
 
   const openEdit = () => {
     setDraft(server.connection_notes ?? "");
@@ -420,9 +428,11 @@ function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: Se
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="sm" onClick={openEdit}>
-              <Pencil className="h-3.5 w-3.5" /> {server.connection_notes ? "Edit" : "Add"}
-            </Button>
+            {can("admin") && (
+              <Button variant="ghost" size="sm" onClick={openEdit}>
+                <Pencil className="h-3.5 w-3.5" /> {server.connection_notes ? "Edit" : "Add"}
+              </Button>
+            )}
           </div>
         </div>
 

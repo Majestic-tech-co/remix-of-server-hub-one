@@ -4,6 +4,7 @@ import {
   clientIp,
   generateAgentToken,
   rateLimit,
+  roleAtLeast,
   sha256Hex,
 } from "./security.server";
 
@@ -73,5 +74,21 @@ describe("security headers", () => {
   it("sets nosniff and a referrer policy", () => {
     expect(h["X-Content-Type-Options"]).toBe("nosniff");
     expect(h["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+  });
+});
+
+describe("roleAtLeast", () => {
+  it("orders viewer < member < admin < owner", () => {
+    expect(roleAtLeast("owner", "admin")).toBe(true);
+    expect(roleAtLeast("admin", "admin")).toBe(true);
+    expect(roleAtLeast("member", "admin")).toBe(false);
+    expect(roleAtLeast("viewer", "member")).toBe(false);
+    expect(roleAtLeast("member", "viewer")).toBe(true);
+  });
+  it("denies missing and unknown roles", () => {
+    expect(roleAtLeast(null, "viewer")).toBe(false);
+    expect(roleAtLeast(undefined, "viewer")).toBe(false);
+    expect(roleAtLeast("superuser", "viewer")).toBe(false);
+    expect(roleAtLeast("constructor", "viewer")).toBe(false);
   });
 });

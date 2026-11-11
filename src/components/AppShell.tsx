@@ -1,9 +1,10 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogOut, Server, Activity, LayoutDashboard, Play, UserCog, ScrollText } from "lucide-react";
+import { LogOut, Server, Activity, LayoutDashboard, Play, UserCog, ScrollText, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertsBell } from "@/components/AlertsBell";
+import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +26,7 @@ const items = [
   { title: "Servers", url: "/", icon: Server, exact: true },
   { title: "Automation", url: "/automation", icon: Play },
   { title: "Activity", url: "/activity", icon: ScrollText },
+  { title: "Team", url: "/team", icon: Users },
   { title: "Account", url: "/account", icon: UserCog },
 ];
 
@@ -43,6 +45,7 @@ function AppSidebar() {
             <span className="font-mono text-[10px] text-muted-foreground">control center</span>
           </div>
         </Link>
+        <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

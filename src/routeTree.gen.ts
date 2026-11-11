@@ -17,6 +17,7 @@ import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as OverviewRouteImport } from './routes/overview'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TeamRouteImport } from './routes/team'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AutomationRunIdRouteImport } from './routes/automation.$runId'
 import { Route as ServersIdRouteImport } from './routes/servers.$id'
@@ -32,6 +33,7 @@ import { Route as ApiServersCreateRouteImport } from './routes/api.servers.creat
 import { Route as ApiServersRotateTokenRouteImport } from './routes/api.servers.rotate-token'
 import { Route as ApiTeamClaimRouteImport } from './routes/api.team.claim'
 import { Route as ApiTeamInviteRouteImport } from './routes/api.team.invite'
+import { Route as ApiTeamListRouteImport } from './routes/api.team.list'
 import { Route as ApiTeamMemberRouteImport } from './routes/api.team.member'
 import { Route as ApiTeamWorkspaceRouteImport } from './routes/api.team.workspace'
 import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
@@ -75,6 +77,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -152,6 +159,11 @@ const ApiTeamInviteRoute = ApiTeamInviteRouteImport.update({
   path: '/api/team/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTeamListRoute = ApiTeamListRouteImport.update({
+  id: '/api/team/list',
+  path: '/api/team/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTeamMemberRoute = ApiTeamMemberRouteImport.update({
   id: '/api/team/member',
   path: '/api/team/member',
@@ -182,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
@@ -197,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
   '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/list': typeof ApiTeamListRoute
   '/api/team/member': typeof ApiTeamMemberRoute
   '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -211,6 +225,7 @@ export interface FileRoutesByTo {
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
@@ -226,6 +241,7 @@ export interface FileRoutesByTo {
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
   '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/list': typeof ApiTeamListRoute
   '/api/team/member': typeof ApiTeamMemberRoute
   '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -241,6 +257,7 @@ export interface FileRoutesById {
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/team': typeof TeamRoute
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
@@ -256,6 +273,7 @@ export interface FileRoutesById {
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
   '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/list': typeof ApiTeamListRoute
   '/api/team/member': typeof ApiTeamMemberRoute
   '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -272,6 +290,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/privacy'
     | '/reset-password'
+    | '/team'
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
@@ -287,6 +306,7 @@ export interface FileRouteTypes {
     | '/api/servers/rotate-token'
     | '/api/team/claim'
     | '/api/team/invite'
+    | '/api/team/list'
     | '/api/team/member'
     | '/api/team/workspace'
     | '/api/terminal/poll'
@@ -301,6 +321,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/privacy'
     | '/reset-password'
+    | '/team'
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
@@ -316,6 +337,7 @@ export interface FileRouteTypes {
     | '/api/servers/rotate-token'
     | '/api/team/claim'
     | '/api/team/invite'
+    | '/api/team/list'
     | '/api/team/member'
     | '/api/team/workspace'
     | '/api/terminal/poll'
@@ -330,6 +352,7 @@ export interface FileRouteTypes {
     | '/overview'
     | '/privacy'
     | '/reset-password'
+    | '/team'
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
@@ -345,6 +368,7 @@ export interface FileRouteTypes {
     | '/api/servers/rotate-token'
     | '/api/team/claim'
     | '/api/team/invite'
+    | '/api/team/list'
     | '/api/team/member'
     | '/api/team/workspace'
     | '/api/terminal/poll'
@@ -360,6 +384,7 @@ export interface RootRouteChildren {
   OverviewRoute: typeof OverviewRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TeamRoute: typeof TeamRoute
   TermsRoute: typeof TermsRoute
   ServersIdRoute: typeof ServersIdRoute
   ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
@@ -374,6 +399,7 @@ export interface RootRouteChildren {
   ApiServersRotateTokenRoute: typeof ApiServersRotateTokenRoute
   ApiTeamClaimRoute: typeof ApiTeamClaimRoute
   ApiTeamInviteRoute: typeof ApiTeamInviteRoute
+  ApiTeamListRoute: typeof ApiTeamListRoute
   ApiTeamMemberRoute: typeof ApiTeamMemberRoute
   ApiTeamWorkspaceRoute: typeof ApiTeamWorkspaceRoute
   ApiTerminalPollRoute: typeof ApiTerminalPollRoute
@@ -436,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -543,6 +576,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTeamInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/team/list': {
+      id: '/api/team/list'
+      path: '/api/team/list'
+      fullPath: '/api/team/list'
+      preLoaderRoute: typeof ApiTeamListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/team/member': {
       id: '/api/team/member'
       path: '/api/team/member'
@@ -595,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
   OverviewRoute: OverviewRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TeamRoute: TeamRoute,
   TermsRoute: TermsRoute,
   ServersIdRoute: ServersIdRoute,
   ApiAccountDeleteRoute: ApiAccountDeleteRoute,
@@ -609,6 +650,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiServersRotateTokenRoute: ApiServersRotateTokenRoute,
   ApiTeamClaimRoute: ApiTeamClaimRoute,
   ApiTeamInviteRoute: ApiTeamInviteRoute,
+  ApiTeamListRoute: ApiTeamListRoute,
   ApiTeamMemberRoute: ApiTeamMemberRoute,
   ApiTeamWorkspaceRoute: ApiTeamWorkspaceRoute,
   ApiTerminalPollRoute: ApiTerminalPollRoute,

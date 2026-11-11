@@ -11,6 +11,15 @@
 | Playbooks / run logs / costs | `automation_*`, `task_logs`, `cost_metrics` | |
 Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optional), Google Fonts.
 
+## Teams and roles
+Data belongs to a **workspace** (team); people belong to workspaces with a role:
+- **owner**: everything, incl. managing admins/owners and deleting the team
+- **admin**: add/edit/delete servers, rotate tokens, edit playbooks, invite members/viewers, read the audit log
+- **member**: run commands, playbooks and terminals; acknowledge alerts
+- **viewer**: read-only (servers, metrics, alerts, playbooks). Note: viewers can also read each server's "connection notes" — don't put secrets there.
+
+Enforced in two places: row-level security in the database (`has_role()` / `server_has_role()`, tested in `src/db/migrations.test.ts`) and explicit role checks in every server route that uses the service role (`getRole` / `getServerAccess`). Removing or demoting someone cuts off an open terminal on its next poll. A workspace can never lose its last owner (DB trigger). Invitations are accepted only for a **confirmed** email address.
+
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
 - Agent endpoints: per-server token, per-token and per-IP rate limits, strict zod schemas, no CORS.
@@ -23,7 +32,7 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - Rate-limit client IP uses only platform-set headers (x-vercel-forwarded-for / x-real-ip); never cf-connecting-ip unless Cloudflare is in front.
 - Per-user row caps (DB triggers) and a 200-server cap per account.
 - Commands stuck running >2h (agent restart) or pending >24h are marked failed by the daily purge.
-- Audit log (`audit_log`): every queued command (DB trigger, so it cannot be skipped), server create/delete, token rotation, terminal session start and data export. Read-only for users; kept 365 days.
+- Audit log (`audit_log`, per workspace; admins read all of it, members read their own events): every queued command (DB trigger, so it cannot be skipped), server create/delete, token rotation, terminal session start and data export. Read-only for users; kept 365 days.
 - Alerts (`alerts`, `evaluate_alerts()` via pg_cron each minute): server silent >5 min, CPU/memory/disk >= 90% (clears < 80%). Users can only acknowledge.
 - Tests: `npm test` runs all migrations on a real Postgres engine (PGlite) and checks RLS, grants, triggers and the maintenance functions, with Supabase's "expose new tables" both on and off. CI runs typecheck, tests, build and `npm audit` on every push.
 - Retention: metrics 30d, terminal sessions 7d, commands 90d (`purge_old_data()`, pg_cron).

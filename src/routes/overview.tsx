@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { Card } from "@/components/ui/card";
 import { Server, Cpu, MemoryStick, AlertTriangle, Terminal, Cloud, HardDrive } from "lucide-react";
 
@@ -31,15 +32,16 @@ function isOnline(t: string | null) {
 
 function Overview() {
   const { user } = useAuth();
+  const { current } = useWorkspace();
   const [servers, setServers] = useState<ServerRow[]>([]);
   const [latest, setLatest] = useState<Record<string, MetricRow>>({});
   const [activeSessions, setActiveSessions] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !current) return;
     const load = async () => {
       const { data: srv } = await supabase.from("servers")
-        .select("id,name,type,last_seen_at");
+        .select("id,name,type,last_seen_at").eq("workspace_id", current.id);
       setServers((srv ?? []) as ServerRow[]);
 
       if (srv && srv.length) {
@@ -63,7 +65,7 @@ function Overview() {
     load();
     const i = setInterval(load, 15000);
     return () => clearInterval(i);
-  }, [user]);
+  }, [user, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => {
     const total = servers.length;

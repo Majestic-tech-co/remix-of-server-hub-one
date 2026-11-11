@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
 import { SERVER_COLUMNS, authedPost, buildInstallCommand } from "@/lib/servers";
+import { useWorkspace } from "@/lib/workspace";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,17 +69,20 @@ interface MetricRow {
 
 function Dashboard() {
   const { user } = useAuth();
+  const { current, can } = useWorkspace();
   const [servers, setServers] = useState<ServerRow[]>([]);
   const [latestMetrics, setLatestMetrics] = useState<Record<string, MetricRow>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !current) return;
+    setLoading(true);
 
     const load = async () => {
       const { data: srv } = await supabase
         .from("servers")
         .select(SERVER_COLUMNS)
+        .eq("workspace_id", current.id)
         .order("created_at", { ascending: false });
       setServers((srv ?? []) as ServerRow[]);
 
@@ -104,7 +108,7 @@ function Dashboard() {
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => {
     const total = servers.length;
@@ -121,7 +125,7 @@ function Dashboard() {
           </h1>
           <h2 className="mt-1 text-3xl font-semibold tracking-tight">Your fleet</h2>
         </div>
-        <AddServerDialog onAdded={(s) => setServers((prev) => [s, ...prev])} />
+        {can("admin") && <AddServerDialog onAdded={(s) => setServers((prev) => [s, ...prev])} />}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -192,6 +196,7 @@ function ServerCard({
   onDeleted: () => void;
 }) {
   const online = isOnline(server.last_seen_at);
+  const { can } = useWorkspace();
 
   const onDelete = async () => {
     if (!confirm(`Remove ${server.name}? Metrics history will be deleted.`)) return;
@@ -222,7 +227,7 @@ function ServerCard({
             {server.region && <span className="ml-2">· {server.region}</span>}
           </div>
         </Link>
-        <DropdownMenu>
+        {can("admin") && <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreVertical className="h-4 w-4" />
@@ -233,7 +238,7 @@ function ServerCard({
               <Trash2 className="mr-2 h-4 w-4" /> Remove
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>}
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
@@ -340,6 +345,7 @@ function EmptyState() {
 
 function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   const { user } = useAuth();
+  const { current } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [tags, setTags] = useState("");
@@ -355,11 +361,12 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !current) return;
     const tagList = tags.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 20);
     const cleanName = name.trim().slice(0, 100);
     if (!cleanName) { toast.error("Enter a server name."); return; }
     const { data, error } = await authedPost<{ server: ServerRow; agent_token: string }>("/api/servers/create", {
+      workspace_id: current.id,
       name: cleanName,
       type,
       tags: tagList,

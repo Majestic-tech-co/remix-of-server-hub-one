@@ -5,6 +5,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { fullTime, timeAgo } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 
@@ -29,36 +30,48 @@ const ACTIONS: Record<string, string> = {
   "server.token_rotated": "Agent token rotated",
   "terminal.started": "Terminal session opened",
   "account.exported": "Data exported",
+  "team.invited": "Invitation sent",
+  "team.invite_revoked": "Invitation revoked",
+  "team.joined": "Joined the team",
+  "team.left": "Left the team",
+  "team.member_removed": "Member removed",
+  "team.role_changed": "Role changed",
+  "workspace.created": "Workspace created",
+  "workspace.renamed": "Workspace renamed",
 };
 
 function describe(a: AuditRow): string {
   const d = a.detail ?? {};
   if (a.action === "command.queued") return String(d.command ?? "");
+  if (typeof d.email === "string") return d.role ? d.email + " (" + d.role + ")" : d.email;
+  if (a.action === "team.role_changed") return String(d.from) + " → " + String(d.to);
   if (typeof d.name === "string") return d.name;
   return "";
 }
 
 function Activity() {
   const { user } = useAuth();
+  const { current } = useWorkspace();
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [events, setEvents] = useState<AuditRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !current) return;
+    setLoaded(false);
     (async () => {
       const [a, e, s] = await Promise.all([
-        supabase.from("alerts").select("id,server_id,kind,message,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
-        supabase.from("audit_log").select("id,action,target_type,target_id,detail,created_at").order("created_at", { ascending: false }).limit(200),
-        supabase.from("servers").select("id,name"),
+        supabase.from("alerts").select("id,server_id,kind,message,created_at,resolved_at").eq("workspace_id", current.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("audit_log").select("id,action,target_type,target_id,detail,created_at").eq("workspace_id", current.id).order("created_at", { ascending: false }).limit(200),
+        supabase.from("servers").select("id,name").eq("workspace_id", current.id),
       ]);
       setAlerts((a.data as AlertRow[]) ?? []);
       setEvents((e.data as AuditRow[]) ?? []);
       setNames(Object.fromEntries(((s.data as { id: string; name: string }[]) ?? []).map((x) => [x.id, x.name])));
       setLoaded(true);
     })();
-  }, [user]);
+  }, [user, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">

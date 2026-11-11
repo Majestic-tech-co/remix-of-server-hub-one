@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Bell, AlertTriangle, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { friendlyError } from "@/lib/errors";
 import { timeAgo } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -20,18 +21,20 @@ type AlertRow = {
 
 export function AlertsBell() {
   const { user } = useAuth();
+  const { current, can } = useWorkspace();
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
 
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!user || !current) return;
     const { data } = await supabase
       .from("alerts")
       .select("id,server_id,kind,message,acknowledged,created_at")
+      .eq("workspace_id", current.id)
       .is("resolved_at", null)
       .order("created_at", { ascending: false })
       .limit(20);
     setAlerts((data as AlertRow[]) ?? []);
-  }, [user]);
+  }, [user, current?.id]);
 
   useEffect(() => {
     load();
@@ -64,7 +67,7 @@ export function AlertsBell() {
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
           <span className="text-sm font-semibold">Alerts</span>
-          {unread.length > 0 && (
+          {unread.length > 0 && can("member") && (
             <button onClick={ackAll} className="text-xs text-primary hover:underline">
               Acknowledge all
             </button>

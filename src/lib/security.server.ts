@@ -135,7 +135,7 @@ export type WorkspaceRole = "viewer" | "member" | "admin" | "owner";
 const ROLE_RANK: Record<WorkspaceRole, number> = { viewer: 1, member: 2, admin: 3, owner: 4 };
 
 export function roleAtLeast(role: string | null | undefined, min: WorkspaceRole): boolean {
-  return !!role && role in ROLE_RANK && ROLE_RANK[role as WorkspaceRole] >= ROLE_RANK[min];
+  return !!role && Object.prototype.hasOwnProperty.call(ROLE_RANK, role) && ROLE_RANK[role as WorkspaceRole] >= ROLE_RANK[min];
 }
 
 export async function getRole(

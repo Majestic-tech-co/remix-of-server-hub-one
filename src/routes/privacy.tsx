@@ -18,7 +18,7 @@ function PrivacyPage() {
 
       <Section title="What we collect">
         <ul className="list-disc space-y-1 pl-5">
-          <li><b>Account data:</b> your email address and a hashed password (we never see or store your plain password).</li>
+          <li><b>Account data:</b> your email address and a hashed password (we never see or store your plain password). If you join a team, the other members of that team can see your email address and your role.</li>
           <li><b>Server inventory you add:</b> server names, tags, type/region/instance ID, connection notes, and — reported by the agent you install — hostname, IP address and operating system.</li>
           <li><b>Operational data:</b> CPU, memory, disk, network and load metrics; commands you run, their output and exit codes; interactive terminal input and output; automation playbooks and run logs; an activity log of actions on your account (commands queued, servers added or removed, token changes) and alerts about your servers.</li>
           <li><b>Technical data:</b> IP address and request metadata in hosting and security logs; authentication tokens in your browser's local storage.</li>

@@ -16,6 +16,7 @@ import {
 import { Play, Plus, FileCode, Sparkles, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
+import { useWorkspace } from "@/lib/workspace";
 
 export const Route = createFileRoute("/automation")({
   component: () => (
@@ -43,26 +44,28 @@ const DEFAULT_PLAYBOOKS = [
 
 function Automation() {
   const { user } = useAuth();
+  const { current, can } = useWorkspace();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    if (!current) return;
     const [{ data: t }, { data: r }] = await Promise.all([
-      supabase.from("automation_tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("automation_runs").select("*").order("started_at", { ascending: false }).limit(20),
+      supabase.from("automation_tasks").select("*").eq("workspace_id", current.id).order("created_at", { ascending: false }),
+      supabase.from("automation_runs").select("*").eq("workspace_id", current.id).order("started_at", { ascending: false }).limit(20),
     ]);
     setTasks((t ?? []) as Task[]);
     setRuns((r ?? []) as Run[]);
     setLoading(false);
   };
 
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { if (user && current) { setLoading(true); load(); } }, [user, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const seedDefaults = async () => {
-    if (!user) return;
+    if (!user || !current) return;
     const { error } = await supabase.from("automation_tasks").insert(
-      DEFAULT_PLAYBOOKS.map((p) => ({ ...p, user_id: user.id }))
+      DEFAULT_PLAYBOOKS.map((p) => ({ ...p, user_id: user.id, workspace_id: current.id }))
     );
     if (error) toast.error(friendlyError(error));
     else { toast.success("Loaded 4 default playbooks"); load(); }
@@ -77,12 +80,12 @@ function Automation() {
           <p className="mt-1 text-sm text-muted-foreground">Run scripts across multiple servers in one shot.</p>
         </div>
         <div className="flex gap-2">
-          {tasks.length === 0 && !loading && (
+          {tasks.length === 0 && !loading && can("admin") && (
             <Button variant="outline" onClick={seedDefaults}>
               <Sparkles className="h-4 w-4" /> Load defaults
             </Button>
           )}
-          <NewPlaybookDialog onCreated={load} />
+          {can("admin") && <NewPlaybookDialog onCreated={load} />}
         </div>
       </div>
 
@@ -142,6 +145,7 @@ function RunStatusIcon({ status }: { status: string }) {
 
 function TaskCard({ task, onRan }: { task: Task; onRan: () => void }) {
   const [open, setOpen] = useState(false);
+  const { can } = useWorkspace();
   return (
     <Card className="flex flex-col p-5">
       <div className="flex items-start gap-2">
@@ -157,7 +161,7 @@ function TaskCard({ task, onRan }: { task: Task; onRan: () => void }) {
         {task.script_content}
       </pre>
       <div className="mt-4 flex justify-end">
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={() => setOpen(true)} disabled={!can("member")} title={can("member") ? undefined : "Viewers can't run playbooks"}>
           <Play className="h-3.5 w-3.5" /> Run
         </Button>
       </div>
@@ -170,16 +174,17 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
   open: boolean; onOpenChange: (v: boolean) => void; task: Task; onRan: () => void;
 }) {
   const { user } = useAuth();
+  const { current } = useWorkspace();
   const [servers, setServers] = useState<{ id: string; name: string; type: string; last_seen_at: string | null }[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
-    supabase.from("servers").select("id,name,type,last_seen_at").order("name").then(({ data }) => {
+    if (!open || !current) return;
+    supabase.from("servers").select("id,name,type,last_seen_at").eq("workspace_id", current.id).order("name").then(({ data }) => {
       setServers((data ?? []) as any);
     });
-  }, [open]);
+  }, [open, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (id: string) => {
     const next = new Set(selected);
@@ -188,10 +193,10 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
   };
 
   const run = async () => {
-    if (!user || selected.size === 0) return;
+    if (!user || !current || selected.size === 0) return;
     setRunning(true);
     const { data: run, error: runErr } = await supabase.from("automation_runs")
-      .insert({ user_id: user.id, task_id: task.id, status: "running" })
+      .insert({ user_id: user.id, workspace_id: current.id, task_id: task.id, status: "running" })
       .select().single();
     if (runErr || !run) { toast.error(friendlyError(runErr)); setRunning(false); return; }
 
@@ -249,6 +254,7 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
 
 function NewPlaybookDialog({ onCreated }: { onCreated: () => void }) {
   const { user } = useAuth();
+  const { current } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -256,9 +262,9 @@ function NewPlaybookDialog({ onCreated }: { onCreated: () => void }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !current) return;
     const { error } = await supabase.from("automation_tasks").insert({
-      user_id: user.id, name: name.trim().slice(0, 100), description: description.trim().slice(0, 1000), script_content: script.slice(0, 20000),
+      user_id: user.id, workspace_id: current.id, name: name.trim().slice(0, 100), description: description.trim().slice(0, 1000), script_content: script.slice(0, 20000),
     });
     if (error) toast.error(friendlyError(error));
     else {
