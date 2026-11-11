@@ -25,6 +25,16 @@ npm run dist    # needs network the first time (electron-builder); output in des
 Windows (NSIS installer), macOS (dmg) and Linux (AppImage, deb). Packaging has not been exercised from CI yet, and
 code signing / notarization (required for smooth installs on macOS and Windows) is not set up.
 
+## Check that it works
+
+```bash
+npm run smoke   # launches the real app and runs 16 end-to-end checks (see smoke/smoke.mjs)
+```
+
+It starts a real SSH server and a local test page, then verifies through the real bridge, IPC and OS keychain
+that the page cannot reach Node, secrets are never returned, a fingerprint must be approved, a real SSH session
+works, and navigation away from the site is blocked.
+
 ## Using it
 
 Open a server, choose the **SSH** tab, enter host / port / username, then either choose your private key file or

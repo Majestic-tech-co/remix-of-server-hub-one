@@ -9,7 +9,8 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
     "dist": "npm run build && npx --yes electron-builder",
-    "test": "echo \"run tests from the repository root: npm test\""
+    "test": "echo \"run tests from the repository root: npm test\"",
+    "smoke": "npm run build && node smoke/smoke.mjs"
   },
   "dependencies": {
     "ssh2": "^1.17.0",
