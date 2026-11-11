@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
-import { Server, Cpu, MemoryStick, AlertTriangle, Terminal, DollarSign, Cloud, HardDrive } from "lucide-react";
+import { Server, Cpu, MemoryStick, AlertTriangle, Terminal, Cloud, HardDrive } from "lucide-react";
 
 export const Route = createFileRoute("/overview")({
   component: () => (
@@ -34,7 +34,6 @@ function Overview() {
   const [servers, setServers] = useState<ServerRow[]>([]);
   const [latest, setLatest] = useState<Record<string, MetricRow>>({});
   const [activeSessions, setActiveSessions] = useState(0);
-  const [mtdSpend, setMtdSpend] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -60,14 +59,6 @@ function Overview() {
         .select("id", { count: "exact", head: true })
         .gte("last_agent_poll_at", cutoff);
       setActiveSessions(count ?? 0);
-
-      const firstOfMonth = new Date();
-      firstOfMonth.setUTCDate(1);
-      firstOfMonth.setUTCHours(0, 0, 0, 0);
-      const { data: costs } = await supabase.from("cost_metrics")
-        .select("daily_cost")
-        .gte("day", firstOfMonth.toISOString().slice(0, 10));
-      setMtdSpend((costs ?? []).reduce((a, r) => a + Number(r.daily_cost ?? 0), 0));
     };
     load();
     const i = setInterval(load, 15000);
@@ -108,7 +99,7 @@ function Overview() {
         <Stat icon={<Cloud className="h-4 w-4" />} label="AWS instances" value={stats.aws} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -134,20 +125,6 @@ function Overview() {
           )}
         </Card>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              <DollarSign className="h-3.5 w-3.5" /> AWS spend (month-to-date)
-            </div>
-            <Link to="/costs" className="font-mono text-[10px] text-primary hover:underline">View →</Link>
-          </div>
-          <div className="mt-4 font-mono text-4xl font-semibold">
-            ${mtdSpend.toFixed(2)}
-          </div>
-          <div className="mt-1 font-mono text-xs text-muted-foreground">
-            Across {stats.aws} AWS server{stats.aws === 1 ? "" : "s"} · demo estimates
-          </div>
-        </Card>
       </div>
 
       <Card className="p-5">

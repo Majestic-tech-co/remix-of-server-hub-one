@@ -20,7 +20,7 @@ function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li><b>Account data:</b> your email address and a hashed password (we never see or store your plain password).</li>
           <li><b>Server inventory you add:</b> server names, tags, type/region/instance ID, connection notes, and — reported by the agent you install — hostname, IP address and operating system.</li>
-          <li><b>Operational data:</b> CPU, memory, disk, network and load metrics; commands you run, their output and exit codes; interactive terminal input and output; automation playbooks and run logs; cost figures you enter.</li>
+          <li><b>Operational data:</b> CPU, memory, disk, network and load metrics; commands you run, their output and exit codes; interactive terminal input and output; automation playbooks and run logs.</li>
           <li><b>Technical data:</b> IP address and request metadata in hosting and security logs; authentication tokens in your browser's local storage.</li>
         </ul>
         <p className="mt-2">Command and terminal output can contain anything your servers print, including sensitive information. Do not run commands that print secrets you don't want stored.</p>

@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AutomationRouteImport } from './routes/automation'
-import { Route as CostsRouteImport } from './routes/costs'
 import { Route as OverviewRouteImport } from './routes/overview'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -42,11 +41,6 @@ const AuthRoute = AuthRouteImport.update({
 const AutomationRoute = AutomationRouteImport.update({
   id: '/automation',
   path: '/automation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CostsRoute = CostsRouteImport.update({
-  id: '/costs',
-  path: '/costs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverviewRoute = OverviewRouteImport.update({
@@ -129,7 +123,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
-  '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -150,7 +143,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
-  '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -172,7 +164,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
-  '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -195,7 +186,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/automation'
-    | '/costs'
     | '/overview'
     | '/privacy'
     | '/reset-password'
@@ -216,7 +206,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/automation'
-    | '/costs'
     | '/overview'
     | '/privacy'
     | '/reset-password'
@@ -237,7 +226,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/automation'
-    | '/costs'
     | '/overview'
     | '/privacy'
     | '/reset-password'
@@ -259,7 +247,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRouteWithChildren
-  CostsRoute: typeof CostsRoute
   OverviewRoute: typeof OverviewRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -297,13 +284,6 @@ declare module '@tanstack/react-router' {
       path: '/automation'
       fullPath: '/automation'
       preLoaderRoute: typeof AutomationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/costs': {
-      id: '/costs'
-      path: '/costs'
-      fullPath: '/costs'
-      preLoaderRoute: typeof CostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/overview': {
@@ -430,7 +410,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRouteWithChildren,
-  CostsRoute: CostsRoute,
   OverviewRoute: OverviewRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
