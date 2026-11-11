@@ -28,7 +28,7 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - The agent and terminal run as root on the target server by design.
 
 ## Operator checklist
-- Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention job).
+- Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention job). The last one, `explicit_grants`, makes the app work with Supabase's "Automatically expose new tables" turned off.
 - Supabase Auth: enable email confirmation, leaked-password protection, min password length 10, CAPTCHA (Turnstile secret), and add the production URL to redirect URLs.
 - Set `VITE_TURNSTILE_SITE_KEY` in the host environment.
 - Never prefix secrets with `VITE_`.
