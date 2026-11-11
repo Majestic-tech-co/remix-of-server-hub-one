@@ -1,13 +1,16 @@
 // POST /api/servers/create
-// Browser auth (Bearer JWT). Creates a server and returns the agent token ONCE.
-// Only a SHA-256 hash of the token is stored.
+// Browser auth (Bearer JWT). Admins and owners add a server to a workspace; the agent token is
+// returned ONCE and only its SHA-256 hash is stored.
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { audit, errors, generateAgentToken, json, logServerError, rateLimit, sha256Hex } from "@/lib/security.server";
+import {
+  audit, errors, generateAgentToken, getRole, json, logServerError, rateLimit, roleAtLeast, sha256Hex,
+} from "@/lib/security.server";
 
 const Schema = z.object({
+  workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(100),
   type: z.enum(["local", "aws"]).default("local"),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
@@ -17,7 +20,8 @@ const Schema = z.object({
 }).strict();
 
 const COLUMNS =
-  "id,user_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes";
+  "id,user_id,workspace_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes";
+const MAX_SERVERS = 200;
 
 export const Route = createFileRoute("/api/servers/create")({
   server: {
@@ -35,18 +39,23 @@ export const Route = createFileRoute("/api/servers/create")({
           if (!parsed.success) return errors.badRequest();
           const d = parsed.data;
 
-          // Cap servers per account (service-role inserts bypass the database row-limit triggers).
+          // Service-role writes bypass row-level security, so check the role ourselves.
+          const role = await getRole(supabaseAdmin, auth.userId, d.workspace_id);
+          if (!role) return errors.notFound();
+          if (!roleAtLeast(role, "admin")) return json({ error: "Only admins can add servers." }, 403);
+
           const { count } = await supabaseAdmin
             .from("servers")
             .select("id", { count: "exact", head: true })
-            .eq("user_id", auth.userId);
-          if ((count ?? 0) >= 200) return json({ error: "Server limit reached." }, 403);
+            .eq("workspace_id", d.workspace_id);
+          if ((count ?? 0) >= MAX_SERVERS) return json({ error: "Server limit reached." }, 403);
 
           const token = generateAgentToken();
           const { data, error } = await supabaseAdmin
             .from("servers")
             .insert({
               user_id: auth.userId,
+              workspace_id: d.workspace_id,
               name: d.name,
               type: d.type,
               tags: d.tags,
@@ -61,7 +70,7 @@ export const Route = createFileRoute("/api/servers/create")({
             if (error) logServerError("server-create", error);
             return errors.server();
           }
-          await audit(supabaseAdmin, auth.userId, "server.created", { type: "server", id: data.id }, { name: data.name });
+          await audit(supabaseAdmin, auth.userId, "server.created", { type: "server", id: data.id }, { name: data.name }, d.workspace_id);
           return json({ server: data, agent_token: token });
         } catch (e) {
           logServerError("server-create", e);

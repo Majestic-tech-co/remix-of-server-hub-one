@@ -30,6 +30,10 @@ import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.termina
 import { Route as ApiAgentUninstallRouteImport } from './routes/api.agent.uninstall'
 import { Route as ApiServersCreateRouteImport } from './routes/api.servers.create'
 import { Route as ApiServersRotateTokenRouteImport } from './routes/api.servers.rotate-token'
+import { Route as ApiTeamClaimRouteImport } from './routes/api.team.claim'
+import { Route as ApiTeamInviteRouteImport } from './routes/api.team.invite'
+import { Route as ApiTeamMemberRouteImport } from './routes/api.team.member'
+import { Route as ApiTeamWorkspaceRouteImport } from './routes/api.team.workspace'
 import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
 import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
 
@@ -138,6 +142,26 @@ const ApiServersRotateTokenRoute = ApiServersRotateTokenRouteImport.update({
   path: '/api/servers/rotate-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTeamClaimRoute = ApiTeamClaimRouteImport.update({
+  id: '/api/team/claim',
+  path: '/api/team/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTeamInviteRoute = ApiTeamInviteRouteImport.update({
+  id: '/api/team/invite',
+  path: '/api/team/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTeamMemberRoute = ApiTeamMemberRouteImport.update({
+  id: '/api/team/member',
+  path: '/api/team/member',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTeamWorkspaceRoute = ApiTeamWorkspaceRouteImport.update({
+  id: '/api/team/workspace',
+  path: '/api/team/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTerminalPollRoute = ApiTerminalPollRouteImport.update({
   id: '/api/terminal/poll',
   path: '/api/terminal/poll',
@@ -171,6 +195,10 @@ export interface FileRoutesByFullPath {
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
+  '/api/team/claim': typeof ApiTeamClaimRoute
+  '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/member': typeof ApiTeamMemberRoute
+  '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -196,6 +224,10 @@ export interface FileRoutesByTo {
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
+  '/api/team/claim': typeof ApiTeamClaimRoute
+  '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/member': typeof ApiTeamMemberRoute
+  '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -222,6 +254,10 @@ export interface FileRoutesById {
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
+  '/api/team/claim': typeof ApiTeamClaimRoute
+  '/api/team/invite': typeof ApiTeamInviteRoute
+  '/api/team/member': typeof ApiTeamMemberRoute
+  '/api/team/workspace': typeof ApiTeamWorkspaceRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -249,6 +285,10 @@ export interface FileRouteTypes {
     | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
+    | '/api/team/claim'
+    | '/api/team/invite'
+    | '/api/team/member'
+    | '/api/team/workspace'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   fileRoutesByTo: FileRoutesByTo
@@ -274,6 +314,10 @@ export interface FileRouteTypes {
     | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
+    | '/api/team/claim'
+    | '/api/team/invite'
+    | '/api/team/member'
+    | '/api/team/workspace'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   id:
@@ -299,6 +343,10 @@ export interface FileRouteTypes {
     | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
+    | '/api/team/claim'
+    | '/api/team/invite'
+    | '/api/team/member'
+    | '/api/team/workspace'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   fileRoutesById: FileRoutesById
@@ -324,6 +372,10 @@ export interface RootRouteChildren {
   ApiAgentUninstallRoute: typeof ApiAgentUninstallRoute
   ApiServersCreateRoute: typeof ApiServersCreateRoute
   ApiServersRotateTokenRoute: typeof ApiServersRotateTokenRoute
+  ApiTeamClaimRoute: typeof ApiTeamClaimRoute
+  ApiTeamInviteRoute: typeof ApiTeamInviteRoute
+  ApiTeamMemberRoute: typeof ApiTeamMemberRoute
+  ApiTeamWorkspaceRoute: typeof ApiTeamWorkspaceRoute
   ApiTerminalPollRoute: typeof ApiTerminalPollRoute
   ApiTerminalStartRoute: typeof ApiTerminalStartRoute
 }
@@ -477,6 +529,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiServersRotateTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/team/claim': {
+      id: '/api/team/claim'
+      path: '/api/team/claim'
+      fullPath: '/api/team/claim'
+      preLoaderRoute: typeof ApiTeamClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/team/invite': {
+      id: '/api/team/invite'
+      path: '/api/team/invite'
+      fullPath: '/api/team/invite'
+      preLoaderRoute: typeof ApiTeamInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/team/member': {
+      id: '/api/team/member'
+      path: '/api/team/member'
+      fullPath: '/api/team/member'
+      preLoaderRoute: typeof ApiTeamMemberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/team/workspace': {
+      id: '/api/team/workspace'
+      path: '/api/team/workspace'
+      fullPath: '/api/team/workspace'
+      preLoaderRoute: typeof ApiTeamWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/terminal/poll': {
       id: '/api/terminal/poll'
       path: '/api/terminal/poll'
@@ -527,6 +607,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentUninstallRoute: ApiAgentUninstallRoute,
   ApiServersCreateRoute: ApiServersCreateRoute,
   ApiServersRotateTokenRoute: ApiServersRotateTokenRoute,
+  ApiTeamClaimRoute: ApiTeamClaimRoute,
+  ApiTeamInviteRoute: ApiTeamInviteRoute,
+  ApiTeamMemberRoute: ApiTeamMemberRoute,
+  ApiTeamWorkspaceRoute: ApiTeamWorkspaceRoute,
   ApiTerminalPollRoute: ApiTerminalPollRoute,
   ApiTerminalStartRoute: ApiTerminalStartRoute,
 }

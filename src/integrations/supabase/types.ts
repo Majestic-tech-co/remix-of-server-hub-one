@@ -23,7 +23,7 @@ export type Database = {
           message: string
           resolved_at: string | null
           server_id: string
-          user_id: string
+          workspace_id: string
         }
         Insert: {
           acknowledged?: boolean
@@ -33,7 +33,7 @@ export type Database = {
           message: string
           resolved_at?: string | null
           server_id: string
-          user_id: string
+          workspace_id: string
         }
         Update: {
           acknowledged?: boolean
@@ -43,7 +43,7 @@ export type Database = {
           message?: string
           resolved_at?: string | null
           server_id?: string
-          user_id?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -55,7 +55,8 @@ export type Database = {
           id: number
           target_id: string | null
           target_type: string | null
-          user_id: string
+          workspace_id: string | null
+          user_id: string | null
         }
         Insert: {
           action: string
@@ -64,7 +65,8 @@ export type Database = {
           id?: number
           target_id?: string | null
           target_type?: string | null
-          user_id: string
+          workspace_id?: string | null
+          user_id?: string | null
         }
         Update: {
           action?: string
@@ -73,7 +75,8 @@ export type Database = {
           id?: number
           target_id?: string | null
           target_type?: string | null
-          user_id?: string
+          workspace_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -84,7 +87,8 @@ export type Database = {
           started_at: string
           status: string
           task_id: string
-          user_id: string
+          workspace_id: string
+          user_id: string | null
         }
         Insert: {
           finished_at?: string | null
@@ -92,7 +96,8 @@ export type Database = {
           started_at?: string
           status?: string
           task_id: string
-          user_id: string
+          workspace_id: string
+          user_id?: string | null
         }
         Update: {
           finished_at?: string | null
@@ -100,7 +105,8 @@ export type Database = {
           started_at?: string
           status?: string
           task_id?: string
-          user_id?: string
+          workspace_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -120,7 +126,8 @@ export type Database = {
           name: string
           script_content: string
           updated_at: string
-          user_id: string
+          workspace_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -129,7 +136,8 @@ export type Database = {
           name: string
           script_content: string
           updated_at?: string
-          user_id: string
+          workspace_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -138,7 +146,8 @@ export type Database = {
           name?: string
           script_content?: string
           updated_at?: string
-          user_id?: string
+          workspace_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -154,7 +163,7 @@ export type Database = {
           status: Database["public"]["Enums"]["command_status"]
           stderr: string | null
           stdout: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           command: string
@@ -167,7 +176,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["command_status"]
           stderr?: string | null
           stdout?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           command?: string
@@ -180,49 +189,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["command_status"]
           stderr?: string | null
           stdout?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "commands_server_id_fkey"
-            columns: ["server_id"]
-            isOneToOne: false
-            referencedRelation: "servers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cost_metrics: {
-        Row: {
-          created_at: string
-          currency: string
-          daily_cost: number
-          day: string
-          id: string
-          server_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          daily_cost?: number
-          day: string
-          id?: string
-          server_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          daily_cost?: number
-          day?: string
-          id?: string
-          server_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cost_metrics_server_id_fkey"
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
@@ -304,7 +275,8 @@ export type Database = {
           region: string | null
           tags: string[]
           type: string
-          user_id: string
+          workspace_id: string
+          user_id: string | null
         }
         Insert: {
           agent_token_hash: string
@@ -320,7 +292,8 @@ export type Database = {
           region?: string | null
           tags?: string[]
           type?: string
-          user_id: string
+          workspace_id: string
+          user_id?: string | null
         }
         Update: {
           agent_token_hash?: string
@@ -336,7 +309,8 @@ export type Database = {
           region?: string | null
           tags?: string[]
           type?: string
-          user_id?: string
+          workspace_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -349,7 +323,7 @@ export type Database = {
           run_id: string
           server_id: string
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           command_id?: string | null
@@ -359,7 +333,7 @@ export type Database = {
           run_id: string
           server_id: string
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           command_id?: string | null
@@ -369,7 +343,7 @@ export type Database = {
           run_id?: string
           server_id?: string
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -459,6 +433,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workspace_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string | null
+          role: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by?: string | null
+          role: string
+          workspace_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_members: {
+        Row: {
+          created_at: string
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
     }
     Views: {

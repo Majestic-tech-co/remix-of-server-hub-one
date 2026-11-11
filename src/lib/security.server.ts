@@ -127,6 +127,42 @@ export function logServerError(scope: string, err: unknown): void {
   console.error(`[${scope}] ${msg}`);
 }
 
+// ---------------------------------------------------------------------------
+// Workspace roles. Server routes use the service role (which bypasses row-level security),
+// so every route MUST check the caller's role here before acting.
+// ---------------------------------------------------------------------------
+export type WorkspaceRole = "viewer" | "member" | "admin" | "owner";
+const ROLE_RANK: Record<WorkspaceRole, number> = { viewer: 1, member: 2, admin: 3, owner: 4 };
+
+export function roleAtLeast(role: string | null | undefined, min: WorkspaceRole): boolean {
+  return !!role && role in ROLE_RANK && ROLE_RANK[role as WorkspaceRole] >= ROLE_RANK[min];
+}
+
+export async function getRole(
+  admin: { from: (t: "workspace_members") => any },
+  userId: string,
+  workspaceId: string,
+): Promise<WorkspaceRole | null> {
+  const { data } = await admin
+    .from("workspace_members")
+    .select("role")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data?.role as WorkspaceRole | undefined) ?? null;
+}
+
+/** Which workspace a server belongs to, and what role the caller has there. null = no such server. */
+export async function getServerAccess(
+  admin: { from: (t: any) => any },
+  userId: string,
+  serverId: string,
+): Promise<{ workspaceId: string; role: WorkspaceRole | null } | null> {
+  const { data: s } = await admin.from("servers").select("workspace_id").eq("id", serverId).maybeSingle();
+  if (!s) return null;
+  return { workspaceId: s.workspace_id as string, role: await getRole(admin, userId, s.workspace_id) };
+}
+
 /** Record a user-visible audit event. Never throws: auditing must not break the action itself. */
 export async function audit(
   admin: { from: (t: "audit_log") => any },
@@ -134,10 +170,12 @@ export async function audit(
   action: string,
   target?: { type: string; id?: string },
   detail: Record<string, unknown> = {},
+  workspaceId: string | null = null,
 ): Promise<void> {
   try {
     const { error } = await admin.from("audit_log").insert({
       user_id: userId,
+      workspace_id: workspaceId,
       action,
       target_type: target?.type ?? null,
       target_id: target?.id ?? null,

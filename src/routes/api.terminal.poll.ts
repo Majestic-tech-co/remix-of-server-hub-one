@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { errors, json, logServerError, rateLimit } from "@/lib/security.server";
+import { errors, getServerAccess, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
@@ -46,6 +46,16 @@ export const Route = createFileRoute("/api/terminal/poll")({
           .eq("id", data.session_id)
           .single();
         if (sessErr || !sess || sess.user_id !== auth.userId) {
+          return errors.notFound();
+        }
+        // Re-check membership on every poll: removing someone from the team (or demoting them
+        // to viewer) must cut off a terminal they already have open.
+        const access = await getServerAccess(supabaseAdmin, auth.userId, sess.server_id);
+        if (!access || !roleAtLeast(access.role, "member")) {
+          await supabaseAdmin
+            .from("terminal_sessions")
+            .update({ status: "closed", closed_at: new Date().toISOString() })
+            .eq("id", sess.id);
           return errors.notFound();
         }
 

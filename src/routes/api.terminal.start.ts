@@ -4,7 +4,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { audit, errors, json, logServerError, rateLimit } from "@/lib/security.server";
+import { audit, errors, getServerAccess, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
 
 const Schema = z.object({
@@ -28,15 +28,12 @@ export const Route = createFileRoute("/api/terminal/start")({
         const parsed = Schema.safeParse(body);
         if (!parsed.success) return errors.badRequest();
 
-        // Verify server ownership
-        const { data: srv } = await supabaseAdmin
-          .from("servers")
-          .select("id, user_id")
-          .eq("id", parsed.data.server_id)
-          .single();
-        if (!srv || srv.user_id !== auth.userId) {
-          return errors.notFound();
-        }
+        // The caller must be a member (or above) of the server's workspace.
+        // Non-members get 404 so server IDs in other workspaces are never revealed.
+        const access = await getServerAccess(supabaseAdmin, auth.userId, parsed.data.server_id);
+        if (!access || !access.role) return errors.notFound();
+        if (!roleAtLeast(access.role, "member")) return json({ error: "Viewers can't open terminals." }, 403);
+        const srv = { id: parsed.data.server_id };
 
         // Close any other open sessions for this user+server (one active shell at a time)
         await supabaseAdmin
@@ -62,7 +59,7 @@ export const Route = createFileRoute("/api/terminal/start")({
           return errors.server();
         }
 
-        await audit(supabaseAdmin, auth.userId, "terminal.started", { type: "server", id: parsed.data.server_id });
+        await audit(supabaseAdmin, auth.userId, "terminal.started", { type: "server", id: parsed.data.server_id }, {}, access.workspaceId);
         return json({ session_id: created.id });
       },
     },
