@@ -2,8 +2,29 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const script = readFileSync(new URL("./install.sh", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const read = (name: string) =>
+  readFileSync(new URL(`./${name}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+
+const script = read("install.sh");
+const uninstall = read("uninstall.sh");
 const hasBash = spawnSync("bash", ["--version"]).status === 0;
+
+describe("agent uninstaller (uninstall.sh)", () => {
+  it.skipIf(!hasBash)("is valid bash", () => {
+    const r = spawnSync("bash", ["-n"], { input: uninstall });
+    expect(r.status, r.stderr?.toString()).toBe(0);
+  });
+
+  it("only deletes fixed Fleet paths (no variable expansion in rm)", () => {
+    const rmLines = uninstall.split("\n").filter((l) => /^\s*rm\b/.test(l));
+    expect(rmLines.length).toBeGreaterThan(0);
+    for (const l of rmLines) {
+      if (l.includes("/etc/systemd/system/")) continue; // unit name comes from a fixed loop list
+      expect(l).not.toContain("$");
+      expect(l).toMatch(/\/(opt|var\/lib)\/fleet-agent|\/etc\/fleet-agent/);
+    }
+  });
+});
 
 describe("agent installer (install.sh)", () => {
   it.skipIf(!hasBash)("is valid bash", () => {

@@ -10,6 +10,11 @@ export function buildInstallCommand(token: string): string {
   return `curl -fsSL ${origin}/api/agent/install | sudo FLEET_TOKEN=${token} FLEET_URL=${origin} bash`;
 }
 
+export function buildUninstallCommand(): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `curl -fsSL ${origin}/api/agent/uninstall | sudo bash`;
+}
+
 /** POST JSON to our own API with the signed-in user's access token. */
 export async function authedPost<T>(path: string, body: unknown): Promise<{ data?: T; error?: string }> {
   const { data: s } = await supabase.auth.getSession();

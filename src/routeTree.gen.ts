@@ -23,6 +23,7 @@ import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.co
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
 import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
+import { Route as ApiAgentUninstallRouteImport } from './routes/api.agent.uninstall'
 import { Route as ApiServersCreateRouteImport } from './routes/api.servers.create'
 import { Route as ApiServersRotateTokenRouteImport } from './routes/api.servers.rotate-token'
 import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
@@ -98,6 +99,11 @@ const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
   path: '/api/agent/terminal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentUninstallRoute = ApiAgentUninstallRouteImport.update({
+  id: '/api/agent/uninstall',
+  path: '/api/agent/uninstall',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiServersCreateRoute = ApiServersCreateRouteImport.update({
   id: '/api/servers/create',
   path: '/api/servers/create',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/terminal/poll'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/terminal/poll'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/agent/uninstall'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/terminal/poll'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
   ApiAgentTerminalRoute: typeof ApiAgentTerminalRoute
+  ApiAgentUninstallRoute: typeof ApiAgentUninstallRoute
   ApiServersCreateRoute: typeof ApiServersCreateRoute
   ApiServersRotateTokenRoute: typeof ApiServersRotateTokenRoute
   ApiTerminalPollRoute: typeof ApiTerminalPollRoute
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentTerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/uninstall': {
+      id: '/api/agent/uninstall'
+      path: '/api/agent/uninstall'
+      fullPath: '/api/agent/uninstall'
+      preLoaderRoute: typeof ApiAgentUninstallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/servers/create': {
       id: '/api/servers/create'
       path: '/api/servers/create'
@@ -420,6 +440,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentInstallRoute: ApiAgentInstallRoute,
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
   ApiAgentTerminalRoute: ApiAgentTerminalRoute,
+  ApiAgentUninstallRoute: ApiAgentUninstallRoute,
   ApiServersCreateRoute: ApiServersCreateRoute,
   ApiServersRotateTokenRoute: ApiServersRotateTokenRoute,
   ApiTerminalPollRoute: ApiTerminalPollRoute,

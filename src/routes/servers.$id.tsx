@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
-import { SERVER_COLUMNS, authedPost, buildInstallCommand } from "@/lib/servers";
+import { SERVER_COLUMNS, authedPost, buildInstallCommand, buildUninstallCommand } from "@/lib/servers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
@@ -193,6 +193,16 @@ function ServerDetail() {
           </div>
           <div className="flex items-center gap-1">
             <RotateTokenButton serverId={server.id} serverName={server.name} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(buildUninstallCommand());
+                toast.success("Uninstall command copied. Run it as root on the server.");
+              }}
+            >
+              <Copy className="h-4 w-4" /> Copy uninstall command
+            </Button>
             <Button variant="ghost" size="sm" onClick={loadAll}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
