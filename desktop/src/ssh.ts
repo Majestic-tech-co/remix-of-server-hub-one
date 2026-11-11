@@ -41,8 +41,9 @@ const MESSAGES: Record<SshErrorCode, string> = {
 };
 
 export interface SshEvents {
-  onData: (sessionId: string, data: Buffer) => void;
-  onClose: (sessionId: string, reason: string) => void;
+  /** `owner` is the id of the window that opened the session, so output can be routed back to it. */
+  onData: (sessionId: string, data: Buffer, owner: number) => void;
+  onClose: (sessionId: string, reason: string, owner: number) => void;
 }
 
 interface Session {
@@ -146,10 +147,10 @@ export class SshManager {
       session.closed = true;
       this.sessions.delete(id);
       try { client.end(); } catch { /* ignore */ }
-      this.events.onClose(id, reason);
+      this.events.onClose(id, reason, owner);
     };
-    stream.on("data", (d: Buffer) => this.events.onData(id, d));
-    stream.stderr.on("data", (d: Buffer) => this.events.onData(id, d));
+    stream.on("data", (d: Buffer) => this.events.onData(id, d, owner));
+    stream.stderr.on("data", (d: Buffer) => this.events.onData(id, d, owner));
     stream.on("close", () => finish("closed"));
     client.on("error", () => finish("connection lost"));
     client.on("close", () => finish("closed"));
