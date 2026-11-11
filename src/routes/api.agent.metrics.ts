@@ -6,6 +6,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import { authenticateAgent, errors, json, logServerError } from "@/lib/security.server";
 
 const Schema = z.object({
   hostname: z.string().max(255).optional(),
@@ -24,44 +25,21 @@ const Schema = z.object({
   uptime_seconds: z.number().int().min(0).optional(),
 });
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Fleet-Token",
-};
 
 export const Route = createFileRoute("/api/agent/metrics")({
   server: {
     handlers: {
-      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
-        const token = request.headers.get("x-fleet-token");
-        if (!token) {
-          return Response.json({ error: "missing token" }, { status: 401, headers: corsHeaders });
-        }
+        try {
+        const auth = await authenticateAgent(request, supabaseAdmin, { limit: 20 });
+        if (auth instanceof Response) return auth;
+        const srv = { id: auth.serverId };
 
         let body: unknown;
-        try {
-          body = await request.json();
-        } catch {
-          return Response.json({ error: "invalid json" }, { status: 400, headers: corsHeaders });
-        }
+        try { body = await request.json(); } catch { return errors.badRequest(); }
         const parsed = Schema.safeParse(body);
-        if (!parsed.success) {
-          console.warn("metrics ingest invalid payload", parsed.error.issues);
-          return Response.json({ error: "invalid payload" }, { status: 400, headers: corsHeaders });
-        }
+        if (!parsed.success) return errors.badRequest();
         const data = parsed.data;
-
-        // Find server by token
-        const { data: srv, error: srvErr } = await supabaseAdmin
-          .from("servers")
-          .select("id")
-          .eq("agent_token", token)
-          .single();
-        if (srvErr || !srv) {
-          return Response.json({ error: "invalid token" }, { status: 401, headers: corsHeaders });
-        }
 
         // Update server inventory + last_seen
         const updates: {
@@ -107,10 +85,11 @@ export const Route = createFileRoute("/api/agent/metrics")({
             .in("id", pending.map((c) => c.id));
         }
 
-        return Response.json(
-          { ok: true, pending_commands: pending ?? [] },
-          { headers: corsHeaders },
-        );
+        return json({ ok: true, pending_commands: pending ?? [] });
+        } catch (e) {
+          logServerError("metrics", e);
+          return errors.server();
+        }
       },
     },
   },

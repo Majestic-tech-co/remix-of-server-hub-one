@@ -9,6 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OverviewRouteImport } from './routes/overview'
 import { Route as CostsRouteImport } from './routes/costs'
 import { Route as AutomationRouteImport } from './routes/automation'
@@ -24,6 +27,21 @@ import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
 import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.command-output'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OverviewRoute = OverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -101,6 +119,9 @@ export interface FileRoutesByFullPath {
   '/automation': typeof AutomationRouteWithChildren
   '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
@@ -117,6 +138,9 @@ export interface FileRoutesByTo {
   '/automation': typeof AutomationRouteWithChildren
   '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
@@ -134,6 +158,9 @@ export interface FileRoutesById {
   '/automation': typeof AutomationRouteWithChildren
   '/costs': typeof CostsRoute
   '/overview': typeof OverviewRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
@@ -152,6 +179,9 @@ export interface FileRouteTypes {
     | '/automation'
     | '/costs'
     | '/overview'
+    | '/privacy'
+    | '/reset-password'
+    | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
@@ -168,6 +198,9 @@ export interface FileRouteTypes {
     | '/automation'
     | '/costs'
     | '/overview'
+    | '/privacy'
+    | '/reset-password'
+    | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
@@ -184,6 +217,9 @@ export interface FileRouteTypes {
     | '/automation'
     | '/costs'
     | '/overview'
+    | '/privacy'
+    | '/reset-password'
+    | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
     | '/api/agent/command-output'
@@ -201,6 +237,9 @@ export interface RootRouteChildren {
   AutomationRoute: typeof AutomationRouteWithChildren
   CostsRoute: typeof CostsRoute
   OverviewRoute: typeof OverviewRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   ServersIdRoute: typeof ServersIdRoute
   ApiAgentCommandOutputRoute: typeof ApiAgentCommandOutputRoute
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
@@ -213,6 +252,27 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/overview': {
       id: '/overview'
       path: '/overview'
@@ -332,6 +392,9 @@ const rootRouteChildren: RootRouteChildren = {
   AutomationRoute: AutomationRouteWithChildren,
   CostsRoute: CostsRoute,
   OverviewRoute: OverviewRoute,
+  PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   ServersIdRoute: ServersIdRoute,
   ApiAgentCommandOutputRoute: ApiAgentCommandOutputRoute,
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
@@ -344,3 +407,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

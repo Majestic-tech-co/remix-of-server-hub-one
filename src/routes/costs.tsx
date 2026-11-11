@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingDown, AlertTriangle, Sparkles, Cloud } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid,
 } from "recharts";
@@ -94,7 +95,7 @@ function Costs() {
       }
     }
     const { error } = await supabase.from("cost_metrics").upsert(rows, { onConflict: "server_id,day" });
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else { toast.success(`Seeded ${rows.length} demo cost rows`); load(); }
   };
 

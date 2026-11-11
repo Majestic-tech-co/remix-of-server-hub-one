@@ -20,6 +20,7 @@ import {
 import { Plus, Cpu, MemoryStick, HardDrive, Copy, Server as ServerIcon, MoreVertical, Trash2, Activity, ArrowDown, ArrowUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -195,7 +196,7 @@ function ServerCard({
   const onDelete = async () => {
     if (!confirm(`Remove ${server.name}? Metrics history will be deleted.`)) return;
     const { error } = await supabase.from("servers").delete().eq("id", server.id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else {
       toast.success("Server removed");
       onDeleted();
@@ -358,22 +359,24 @@ function AddServerDialog({ onAdded }: { onAdded: (s: ServerRow) => void }) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const tagList = tags.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 20);
+    const cleanName = name.trim().slice(0, 100);
+    if (!cleanName) { toast.error("Enter a server name."); return; }
     const { data, error } = await supabase
       .from("servers")
       .insert({
         user_id: user.id,
-        name,
+        name: cleanName,
         tags: tagList,
         type,
-        region: type === "aws" ? region || null : null,
-        instance_id: type === "aws" ? instanceId || null : null,
-        connection_notes: connectionNotes.trim() || null,
+        region: type === "aws" ? region.trim().slice(0, 64) || null : null,
+        instance_id: type === "aws" ? instanceId.trim().slice(0, 64) || null : null,
+        connection_notes: connectionNotes.trim().slice(0, 5000) || null,
       })
       .select()
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
       return;
     }
     setCreated(data as ServerRow);

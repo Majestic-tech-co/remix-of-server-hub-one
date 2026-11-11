@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Play, Plus, FileCode, Sparkles, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/automation")({
   component: () => (
@@ -63,7 +64,7 @@ function Automation() {
     const { error } = await supabase.from("automation_tasks").insert(
       DEFAULT_PLAYBOOKS.map((p) => ({ ...p, user_id: user.id }))
     );
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else { toast.success("Loaded 4 default playbooks"); load(); }
   };
 
@@ -192,13 +193,13 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
     const { data: run, error: runErr } = await supabase.from("automation_runs")
       .insert({ user_id: user.id, task_id: task.id, status: "running" })
       .select().single();
-    if (runErr || !run) { toast.error(runErr?.message ?? "Failed"); setRunning(false); return; }
+    if (runErr || !run) { toast.error(friendlyError(runErr)); setRunning(false); return; }
 
     for (const sid of selected) {
       const { data: cmd, error: cmdErr } = await supabase.from("commands")
         .insert({ user_id: user.id, server_id: sid, command: task.script_content })
         .select().single();
-      if (cmdErr) { toast.error(`${sid}: ${cmdErr.message}`); continue; }
+      if (cmdErr) { toast.error("A command could not be queued for one server."); continue; }
       await supabase.from("task_logs").insert({
         user_id: user.id, run_id: run.id, server_id: sid, command_id: cmd.id, status: "pending",
       });
@@ -257,9 +258,9 @@ function NewPlaybookDialog({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     if (!user) return;
     const { error } = await supabase.from("automation_tasks").insert({
-      user_id: user.id, name, description, script_content: script,
+      user_id: user.id, name: name.trim().slice(0, 100), description: description.trim().slice(0, 1000), script_content: script.slice(0, 20000),
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error));
     else {
       toast.success("Playbook saved");
       setName(""); setDescription(""); setScript("");

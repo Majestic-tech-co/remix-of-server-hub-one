@@ -9,38 +9,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { errors, json, logServerError, rateLimit } from "@/lib/security.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 const Schema = z.object({
   session_id: z.string().uuid(),
-  output_ack: z.number().int().min(0).default(0),
-  input_b64: z.string().max(64_000).optional(),
+  output_ack: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  input_b64: z.string().max(64_000).regex(/^[A-Za-z0-9+/=\r\n]*$/).optional(),
   cols: z.number().int().min(20).max(500).optional(),
   rows: z.number().int().min(5).max(200).optional(),
   close: z.boolean().optional(),
 });
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
 const MAX_INPUT_BUFFER = 256_000; // 256KB cap
 
 export const Route = createFileRoute("/api/terminal/poll")({
   server: {
     handlers: {
-      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
         const auth = await getUserFromRequest(request);
         if (auth instanceof Response) return auth;
+        const rl = rateLimit(`term-poll:${auth.userId}`, 900, 60_000);
+        if (!rl.ok) return errors.tooMany(rl.retryAfter);
 
         let body: unknown;
-        try { body = await request.json(); } catch { return Response.json({ error: "invalid json" }, { status: 400, headers: corsHeaders }); }
+        try { body = await request.json(); } catch { return errors.badRequest(); }
         const parsed = Schema.safeParse(body);
-        if (!parsed.success) return Response.json({ error: "invalid payload" }, { status: 400, headers: corsHeaders });
+        if (!parsed.success) return errors.badRequest();
         const data = parsed.data;
 
         const { data: sess, error: sessErr } = await supabaseAdmin
@@ -49,7 +46,7 @@ export const Route = createFileRoute("/api/terminal/poll")({
           .eq("id", data.session_id)
           .single();
         if (sessErr || !sess || sess.user_id !== auth.userId) {
-          return Response.json({ error: "not found" }, { status: 404, headers: corsHeaders });
+          return errors.notFound();
         }
 
         // Build update payload
@@ -96,16 +93,12 @@ export const Route = createFileRoute("/api/terminal/poll")({
           .update(update)
           .eq("id", sess.id);
 
-        return Response.json(
-          {
-            status: data.close ? "closed" : sess.status,
+        return json({ status: data.close ? "closed" : sess.status,
             output_b64: newSlice,
             output_seq: outputSeq,
             cols: sess.cols,
             rows: sess.rows,
-          },
-          { headers: corsHeaders },
-        );
+          });
       },
     },
   },

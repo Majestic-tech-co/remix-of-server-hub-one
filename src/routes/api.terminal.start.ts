@@ -4,6 +4,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { errors, json, logServerError, rateLimit } from "@/lib/security.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
 
 const Schema = z.object({
@@ -12,24 +13,20 @@ const Schema = z.object({
   rows: z.number().int().min(5).max(200).default(24),
 });
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
 export const Route = createFileRoute("/api/terminal/start")({
   server: {
     handlers: {
-      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
         const auth = await getUserFromRequest(request);
         if (auth instanceof Response) return auth;
+        const rl = rateLimit(`term-start:${auth.userId}`, 10, 60_000);
+        if (!rl.ok) return errors.tooMany(rl.retryAfter);
 
         let body: unknown;
-        try { body = await request.json(); } catch { return Response.json({ error: "invalid json" }, { status: 400, headers: corsHeaders }); }
+        try { body = await request.json(); } catch { return errors.badRequest(); }
         const parsed = Schema.safeParse(body);
-        if (!parsed.success) return Response.json({ error: "invalid payload" }, { status: 400, headers: corsHeaders });
+        if (!parsed.success) return errors.badRequest();
 
         // Verify server ownership
         const { data: srv } = await supabaseAdmin
@@ -38,7 +35,7 @@ export const Route = createFileRoute("/api/terminal/start")({
           .eq("id", parsed.data.server_id)
           .single();
         if (!srv || srv.user_id !== auth.userId) {
-          return Response.json({ error: "not found" }, { status: 404, headers: corsHeaders });
+          return errors.notFound();
         }
 
         // Close any other open sessions for this user+server (one active shell at a time)
@@ -61,10 +58,11 @@ export const Route = createFileRoute("/api/terminal/start")({
           .select("id")
           .single();
         if (error || !created) {
-          return Response.json({ error: "failed to create" }, { status: 500, headers: corsHeaders });
+          if (error) logServerError("terminal-start", error);
+          return errors.server();
         }
 
-        return Response.json({ session_id: created.id }, { headers: corsHeaders });
+        return json({ session_id: created.id });
       },
     },
   },

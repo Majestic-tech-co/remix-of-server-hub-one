@@ -1,0 +1,140 @@
+// Server-only security helpers: security headers, rate limiting, safe responses.
+// Imported only from server handlers / middleware.
+
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+
+function supabaseOrigins(): { http: string; ws: string } {
+  try {
+    const u = new URL(SUPABASE_URL);
+    return { http: u.origin, ws: `wss://${u.host}` };
+  } catch {
+    return { http: "https://*.supabase.co", ws: "wss://*.supabase.co" };
+  }
+}
+
+export function buildSecurityHeaders(): Record<string, string> {
+  const sb = supabaseOrigins();
+  const isProd = process.env.NODE_ENV === "production";
+  // 'unsafe-inline' for scripts is required by TanStack Start's inline SSR
+  // hydration payload (known risk, see SECURITY.md). Everything else is locked down.
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https://*.r2.dev",
+    `connect-src 'self' ${sb.http} ${sb.ws}`,
+    "frame-src https://challenges.cloudflare.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    ...(isProd ? ["upgrade-insecure-requests"] : []),
+  ].join("; ");
+
+  return {
+    ...(isProd ? { "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload" } : {}),
+    "Content-Security-Policy": csp,
+        "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting (fixed window, in-memory).
+// Best-effort: state is per server instance/isolate. It stops casual abuse and
+// runaway agents; for strict global limits add a Cloudflare/Vercel WAF rule or
+// a shared store (e.g. Upstash Redis) behind this same function.
+// ---------------------------------------------------------------------------
+type Bucket = { count: number; resetAt: number };
+const buckets = new Map<string, Bucket>();
+let lastSweep = 0;
+
+export function rateLimit(key: string, limit: number, windowMs: number): { ok: boolean; retryAfter: number } {
+  const now = Date.now();
+  if (now - lastSweep > 60_000) {
+    lastSweep = now;
+    for (const [k, b] of buckets) if (b.resetAt <= now) buckets.delete(k);
+    if (buckets.size > 50_000) buckets.clear(); // hard memory cap
+  }
+  const b = buckets.get(key);
+  if (!b || b.resetAt <= now) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return { ok: true, retryAfter: 0 };
+  }
+  b.count += 1;
+  if (b.count > limit) return { ok: false, retryAfter: Math.ceil((b.resetAt - now) / 1000) };
+  return { ok: true, retryAfter: 0 };
+}
+
+export function clientIp(request: Request): string {
+  return (
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+// Small stable hash so raw tokens never become map keys / log lines.
+export function shortHash(input: string): string {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) h = ((h << 5) + h + input.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+// ---------------------------------------------------------------------------
+// Responses. No CORS headers on purpose: the API is only called same-origin by
+// the browser UI, or by non-browser agents (curl/python) that ignore CORS.
+// ---------------------------------------------------------------------------
+export function json(body: unknown, status = 200, extra?: HeadersInit): Response {
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store", ...extra } });
+}
+
+export const errors = {
+  unauthorized: () => json({ error: "Unauthorized" }, 401),
+  notFound: () => json({ error: "Not found" }, 404),
+  badRequest: () => json({ error: "Invalid request" }, 400),
+  server: () => json({ error: "Something went wrong. Please try again." }, 500),
+  tooMany: (retryAfter: number) =>
+    json({ error: "Too many requests. Please slow down." }, 429, { "Retry-After": String(retryAfter) }),
+};
+
+/** Log full detail server-side only; never return it to the client. */
+export function logServerError(scope: string, err: unknown): void {
+  const msg = err instanceof Error ? err.message : typeof err === "object" ? JSON.stringify(err) : String(err);
+  console.error(`[${scope}] ${msg}`);
+}
+
+/** Agent-token auth with per-IP throttling of failures. Returns server id or a Response. */
+export async function authenticateAgent(
+  request: Request,
+  admin: { from: (t: "servers") => any },
+  opts: { limit: number; windowMs?: number },
+): Promise<{ serverId: string } | Response> {
+  const ip = clientIp(request);
+  const token = request.headers.get("x-fleet-token");
+  // Throttle unauthenticated/bad-token traffic by IP first.
+  const ipCheck = rateLimit(`agent-ip:${ip}`, 600, 60_000);
+  if (!ipCheck.ok) return errors.tooMany(ipCheck.retryAfter);
+  if (!token || token.length > 128) return errors.unauthorized();
+
+  const rl = rateLimit(`agent-token:${shortHash(token)}`, opts.limit, opts.windowMs ?? 60_000);
+  if (!rl.ok) return errors.tooMany(rl.retryAfter);
+
+  const { data: srv, error } = await admin.from("servers").select("id").eq("agent_token", token).maybeSingle();
+  if (error) {
+    logServerError("agent-auth", error);
+    return errors.server();
+  }
+  if (!srv) {
+    // Penalise bad tokens harder to blunt guessing.
+    const bad = rateLimit(`agent-bad:${ip}`, 20, 60_000);
+    if (!bad.ok) return errors.tooMany(bad.retryAfter);
+    return errors.unauthorized();
+  }
+  return { serverId: srv.id as string };
+}

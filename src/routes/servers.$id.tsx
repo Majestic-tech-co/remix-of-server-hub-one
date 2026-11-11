@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/errors";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
@@ -335,7 +336,7 @@ function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: Se
 
   const save = async () => {
     setSaving(true);
-    const value = draft.trim() ? draft : null;
+    const value = draft.trim() ? draft.slice(0, 5000) : null;
     const { data, error } = await supabase
       .from("servers")
       .update({ connection_notes: value })
@@ -344,7 +345,7 @@ function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: Se
       .single();
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(friendlyError(error));
       return;
     }
     onUpdated(data as ServerRow);

@@ -6,4 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig();
+export default defineConfig({
+  // Deploy target: Vercel (Lovable default was Cloudflare)
+  nitro: { preset: "vercel" },
+});

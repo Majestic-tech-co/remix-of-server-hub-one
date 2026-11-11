@@ -13,21 +13,17 @@
 // auto-time-out after 5 min without a browser poll.
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { authenticateAgent, errors, json, logServerError } from "@/lib/security.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const Schema = z.object({
   acks: z.record(z.string().uuid(), z.number().int().min(0)).optional(),
   outputs: z.array(z.object({
     session_id: z.string().uuid(),
-    b64: z.string().max(200_000),
+    b64: z.string().max(200_000).regex(/^[A-Za-z0-9+\/=\r\n]*$/),
   })).max(20).optional(),
 });
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Fleet-Token",
-};
 
 const MAX_OUTPUT_BUFFER = 1_000_000; // 1MB rolling cap
 const SESSION_IDLE_MS = 5 * 60 * 1000;
@@ -35,26 +31,20 @@ const SESSION_IDLE_MS = 5 * 60 * 1000;
 export const Route = createFileRoute("/api/agent/terminal")({
   server: {
     handlers: {
-      OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
-        const token = request.headers.get("x-fleet-token");
-        if (!token) return Response.json({ error: "missing token" }, { status: 401, headers: corsHeaders });
-
+        const auth = await authenticateAgent(request, supabaseAdmin, { limit: 900 });
+        if (auth instanceof Response) return auth;
+        const srv = { id: auth.serverId };
+        try {
         let body: unknown = {};
         try {
           const text = await request.text();
+          if (text.length > 2_000_000) return errors.badRequest();
           if (text) body = JSON.parse(text);
-        } catch { return Response.json({ error: "invalid json" }, { status: 400, headers: corsHeaders }); }
+        } catch { return errors.badRequest(); }
         const parsed = Schema.safeParse(body);
-        if (!parsed.success) return Response.json({ error: "invalid payload" }, { status: 400, headers: corsHeaders });
+        if (!parsed.success) return errors.badRequest();
         const data = parsed.data;
-
-        const { data: srv } = await supabaseAdmin
-          .from("servers")
-          .select("id")
-          .eq("agent_token", token)
-          .single();
-        if (!srv) return Response.json({ error: "invalid token" }, { status: 401, headers: corsHeaders });
 
         const now = new Date();
         const idleCutoff = new Date(now.getTime() - SESSION_IDLE_MS).toISOString();
@@ -145,7 +135,11 @@ export const Route = createFileRoute("/api/agent/terminal")({
             .in("id", out.map((s) => s.id));
         }
 
-        return Response.json({ sessions: out, closed: (sessions ?? []).filter((s) => s.status === "closed").map((s) => s.id) }, { headers: corsHeaders });
+        return json({ sessions: out, closed: (sessions ?? []).filter((s) => s.status === "closed").map((s) => s.id) });
+        } catch (e) {
+          logServerError("agent-terminal", e);
+          return errors.server();
+        }
       },
     },
   },
