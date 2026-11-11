@@ -43,9 +43,9 @@
     "@supabase/supabase-js": "^2.103.3",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-router": "^1.168.0",
-    "@tanstack/react-start": "^1.167.14",
-    "@tanstack/router-plugin": "^1.167.10",
+    "@tanstack/react-router": "^1.170.42",
+    "@tanstack/react-start": "^1.168.61",
+    "@tanstack/router-plugin": "^1.168.43",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
@@ -69,7 +69,7 @@
     "tw-animate-css": "^1.3.4",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
-    "zod": "^3.24.2"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

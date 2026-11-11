@@ -9,52 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as OverviewRouteImport } from './routes/overview'
-import { Route as CostsRouteImport } from './routes/costs'
-import { Route as AutomationRouteImport } from './routes/automation'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ServersIdRouteImport } from './routes/servers.$id'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AutomationRouteImport } from './routes/automation'
+import { Route as CostsRouteImport } from './routes/costs'
+import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AutomationRunIdRouteImport } from './routes/automation.$runId'
-import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
-import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
-import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
-import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
-import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
-import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
+import { Route as ServersIdRouteImport } from './routes/servers.$id'
 import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.command-output'
+import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
+import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
+import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
+import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
+import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
+import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OverviewRoute = OverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CostsRoute = CostsRouteImport.update({
-  id: '/costs',
-  path: '/costs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationRoute = AutomationRouteImport.update({
-  id: '/automation',
-  path: '/automation',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -62,14 +37,34 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AutomationRoute = AutomationRouteImport.update({
+  id: '/automation',
+  path: '/automation',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ServersIdRoute = ServersIdRouteImport.update({
-  id: '/servers/$id',
-  path: '/servers/$id',
+const CostsRoute = CostsRouteImport.update({
+  id: '/costs',
+  path: '/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverviewRoute = OverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomationRunIdRoute = AutomationRunIdRouteImport.update({
@@ -77,29 +72,14 @@ const AutomationRunIdRoute = AutomationRunIdRouteImport.update({
   path: '/$runId',
   getParentRoute: () => AutomationRoute,
 } as any)
-const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
-  id: '/api/terminal/start',
-  path: '/api/terminal/start',
+const ServersIdRoute = ServersIdRouteImport.update({
+  id: '/servers/$id',
+  path: '/servers/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTerminalPollRoute = ApiTerminalPollRouteImport.update({
-  id: '/api/terminal/poll',
-  path: '/api/terminal/poll',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
-  id: '/api/agent/terminal',
-  path: '/api/agent/terminal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAgentMetricsRoute = ApiAgentMetricsRouteImport.update({
-  id: '/api/agent/metrics',
-  path: '/api/agent/metrics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAgentInstallRoute = ApiAgentInstallRouteImport.update({
-  id: '/api/agent/install',
-  path: '/api/agent/install',
+const ApiAgentCommandOutputRoute = ApiAgentCommandOutputRouteImport.update({
+  id: '/api/agent/command-output',
+  path: '/api/agent/command-output',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAgentCommandResultRoute = ApiAgentCommandResultRouteImport.update({
@@ -107,9 +87,29 @@ const ApiAgentCommandResultRoute = ApiAgentCommandResultRouteImport.update({
   path: '/api/agent/command-result',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAgentCommandOutputRoute = ApiAgentCommandOutputRouteImport.update({
-  id: '/api/agent/command-output',
-  path: '/api/agent/command-output',
+const ApiAgentInstallRoute = ApiAgentInstallRouteImport.update({
+  id: '/api/agent/install',
+  path: '/api/agent/install',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentMetricsRoute = ApiAgentMetricsRouteImport.update({
+  id: '/api/agent/metrics',
+  path: '/api/agent/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
+  id: '/api/agent/terminal',
+  path: '/api/agent/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTerminalPollRoute = ApiTerminalPollRouteImport.update({
+  id: '/api/terminal/poll',
+  path: '/api/terminal/poll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
+  id: '/api/terminal/start',
+  path: '/api/terminal/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -252,46 +252,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/overview': {
-      id: '/overview'
-      path: '/overview'
-      fullPath: '/overview'
-      preLoaderRoute: typeof OverviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/costs': {
-      id: '/costs'
-      path: '/costs'
-      fullPath: '/costs'
-      preLoaderRoute: typeof CostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automation': {
-      id: '/automation'
-      path: '/automation'
-      fullPath: '/automation'
-      preLoaderRoute: typeof AutomationRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -301,18 +266,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/automation': {
+      id: '/automation'
+      path: '/automation'
+      fullPath: '/automation'
+      preLoaderRoute: typeof AutomationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/servers/$id': {
-      id: '/servers/$id'
-      path: '/servers/$id'
-      fullPath: '/servers/$id'
-      preLoaderRoute: typeof ServersIdRouteImport
+    '/costs': {
+      id: '/costs'
+      path: '/costs'
+      fullPath: '/costs'
+      preLoaderRoute: typeof CostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/overview': {
+      id: '/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automation/$runId': {
@@ -322,39 +315,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AutomationRunIdRouteImport
       parentRoute: typeof AutomationRoute
     }
-    '/api/terminal/start': {
-      id: '/api/terminal/start'
-      path: '/api/terminal/start'
-      fullPath: '/api/terminal/start'
-      preLoaderRoute: typeof ApiTerminalStartRouteImport
+    '/servers/$id': {
+      id: '/servers/$id'
+      path: '/servers/$id'
+      fullPath: '/servers/$id'
+      preLoaderRoute: typeof ServersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/terminal/poll': {
-      id: '/api/terminal/poll'
-      path: '/api/terminal/poll'
-      fullPath: '/api/terminal/poll'
-      preLoaderRoute: typeof ApiTerminalPollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/agent/terminal': {
-      id: '/api/agent/terminal'
-      path: '/api/agent/terminal'
-      fullPath: '/api/agent/terminal'
-      preLoaderRoute: typeof ApiAgentTerminalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/agent/metrics': {
-      id: '/api/agent/metrics'
-      path: '/api/agent/metrics'
-      fullPath: '/api/agent/metrics'
-      preLoaderRoute: typeof ApiAgentMetricsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/agent/install': {
-      id: '/api/agent/install'
-      path: '/api/agent/install'
-      fullPath: '/api/agent/install'
-      preLoaderRoute: typeof ApiAgentInstallRouteImport
+    '/api/agent/command-output': {
+      id: '/api/agent/command-output'
+      path: '/api/agent/command-output'
+      fullPath: '/api/agent/command-output'
+      preLoaderRoute: typeof ApiAgentCommandOutputRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agent/command-result': {
@@ -364,11 +336,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentCommandResultRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/agent/command-output': {
-      id: '/api/agent/command-output'
-      path: '/api/agent/command-output'
-      fullPath: '/api/agent/command-output'
-      preLoaderRoute: typeof ApiAgentCommandOutputRouteImport
+    '/api/agent/install': {
+      id: '/api/agent/install'
+      path: '/api/agent/install'
+      fullPath: '/api/agent/install'
+      preLoaderRoute: typeof ApiAgentInstallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/metrics': {
+      id: '/api/agent/metrics'
+      path: '/api/agent/metrics'
+      fullPath: '/api/agent/metrics'
+      preLoaderRoute: typeof ApiAgentMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/terminal': {
+      id: '/api/agent/terminal'
+      path: '/api/agent/terminal'
+      fullPath: '/api/agent/terminal'
+      preLoaderRoute: typeof ApiAgentTerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/terminal/poll': {
+      id: '/api/terminal/poll'
+      path: '/api/terminal/poll'
+      fullPath: '/api/terminal/poll'
+      preLoaderRoute: typeof ApiTerminalPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/terminal/start': {
+      id: '/api/terminal/start'
+      path: '/api/terminal/start'
+      fullPath: '/api/terminal/start'
+      preLoaderRoute: typeof ApiTerminalStartRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
