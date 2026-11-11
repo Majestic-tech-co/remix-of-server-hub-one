@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { errors, generateAgentToken, json, logServerError, rateLimit, sha256Hex } from "@/lib/security.server";
+import { audit, errors, generateAgentToken, json, logServerError, rateLimit, sha256Hex } from "@/lib/security.server";
 
 const Schema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -61,6 +61,7 @@ export const Route = createFileRoute("/api/servers/create")({
             if (error) logServerError("server-create", error);
             return errors.server();
           }
+          await audit(supabaseAdmin, auth.userId, "server.created", { type: "server", id: data.id }, { name: data.name });
           return json({ server: data, agent_token: token });
         } catch (e) {
           logServerError("server-create", e);

@@ -20,7 +20,7 @@ function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li><b>Account data:</b> your email address and a hashed password (we never see or store your plain password).</li>
           <li><b>Server inventory you add:</b> server names, tags, type/region/instance ID, connection notes, and — reported by the agent you install — hostname, IP address and operating system.</li>
-          <li><b>Operational data:</b> CPU, memory, disk, network and load metrics; commands you run, their output and exit codes; interactive terminal input and output; automation playbooks and run logs.</li>
+          <li><b>Operational data:</b> CPU, memory, disk, network and load metrics; commands you run, their output and exit codes; interactive terminal input and output; automation playbooks and run logs; an activity log of actions on your account (commands queued, servers added or removed, token changes) and alerts about your servers.</li>
           <li><b>Technical data:</b> IP address and request metadata in hosting and security logs; authentication tokens in your browser's local storage.</li>
         </ul>
         <p className="mt-2">Command and terminal output can contain anything your servers print, including sensitive information. Do not run commands that print secrets you don't want stored.</p>
@@ -44,7 +44,7 @@ function PrivacyPage() {
       </Section>
 
       <Section title="Retention and deletion">
-        Your data is kept while your account is active. Metrics are deleted after 30 days, closed terminal sessions after 7 days and command history after 90 days. Deleting a server removes all of its data immediately. You can download your data or delete your account and all associated data yourself from the Account page.
+        Your data is kept while your account is active. Metrics are deleted after 30 days, closed terminal sessions after 7 days and command history after 90 days, the activity log after 12 months and resolved alerts after 30 days. Deleting a server removes all of its data immediately. You can download your data or delete your account and all associated data yourself from the Account page.
       </Section>
 
       <Section title="Your rights (GDPR / UK GDPR / CCPA)">

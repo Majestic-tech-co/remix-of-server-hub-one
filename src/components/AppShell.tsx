@@ -1,8 +1,9 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogOut, Server, Activity, LayoutDashboard, Play, UserCog } from "lucide-react";
+import { LogOut, Server, Activity, LayoutDashboard, Play, UserCog, ScrollText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AlertsBell } from "@/components/AlertsBell";
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +24,7 @@ const items = [
   { title: "Overview", url: "/overview", icon: LayoutDashboard },
   { title: "Servers", url: "/", icon: Server, exact: true },
   { title: "Automation", url: "/automation", icon: Play },
+  { title: "Activity", url: "/activity", icon: ScrollText },
   { title: "Account", url: "/account", icon: UserCog },
 ];
 
@@ -87,6 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
                 {user?.email}
               </span>
+              <AlertsBell />
               <ThemeToggle />
               <Button
                 variant="ghost"

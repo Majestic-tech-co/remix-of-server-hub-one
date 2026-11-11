@@ -4,7 +4,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { errors, logServerError, rateLimit } from "@/lib/security.server";
+import { audit, errors, logServerError, rateLimit } from "@/lib/security.server";
 
 const SERVER_COLS =
   "id,name,hostname,ip_address,os,tags,type,region,instance_id,connection_notes,last_seen_at,created_at";
@@ -66,6 +66,7 @@ export const Route = createFileRoute("/api/account/export")({
             notes: `Metrics are limited to the most recent ${METRICS_CAP} samples. Agent tokens and terminal contents are not included.`,
           };
 
+          await audit(supabaseAdmin, uid, "account.exported");
           return new Response(JSON.stringify(payload, null, 2), {
             status: 200,
             headers: {

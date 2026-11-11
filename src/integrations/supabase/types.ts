@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          acknowledged: boolean
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          resolved_at: string | null
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          resolved_at?: string | null
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          acknowledged?: boolean
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          resolved_at?: string | null
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          detail: Json
+          id: number
+          target_id: string | null
+          target_type: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: Json
+          id?: number
+          target_id?: string | null
+          target_type?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: Json
+          id?: number
+          target_id?: string | null
+          target_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       automation_runs: {
         Row: {
           finished_at: string | null

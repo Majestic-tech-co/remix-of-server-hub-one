@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { errors, generateAgentToken, json, logServerError, rateLimit, sha256Hex } from "@/lib/security.server";
+import { audit, errors, generateAgentToken, json, logServerError, rateLimit, sha256Hex } from "@/lib/security.server";
 
 const Schema = z.object({ server_id: z.string().uuid() }).strict();
 
@@ -37,6 +37,7 @@ export const Route = createFileRoute("/api/servers/rotate-token")({
             return errors.server();
           }
           if (!data) return errors.notFound();
+          await audit(supabaseAdmin, auth.userId, "server.token_rotated", { type: "server", id: data.id });
           return json({ agent_token: token });
         } catch (e) {
           logServerError("server-rotate", e);

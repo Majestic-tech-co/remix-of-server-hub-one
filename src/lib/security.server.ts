@@ -127,6 +127,28 @@ export function logServerError(scope: string, err: unknown): void {
   console.error(`[${scope}] ${msg}`);
 }
 
+/** Record a user-visible audit event. Never throws: auditing must not break the action itself. */
+export async function audit(
+  admin: { from: (t: "audit_log") => any },
+  userId: string,
+  action: string,
+  target?: { type: string; id?: string },
+  detail: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    const { error } = await admin.from("audit_log").insert({
+      user_id: userId,
+      action,
+      target_type: target?.type ?? null,
+      target_id: target?.id ?? null,
+      detail,
+    });
+    if (error) logServerError("audit", error);
+  } catch (e) {
+    logServerError("audit", e);
+  }
+}
+
 /** Agent-token auth with per-IP throttling of failures. Returns server id or a Response. */
 export async function authenticateAgent(
   request: Request,

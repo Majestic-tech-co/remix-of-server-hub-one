@@ -34,6 +34,8 @@ export const Route = createFileRoute("/api/account/delete")({
             return json({ error: "The email you typed doesn't match this account." }, 400);
           }
 
+          // audit_log has no FK to users (see migration), so remove this account's history explicitly
+          await supabaseAdmin.from("audit_log").delete().eq("user_id", auth.userId);
           const { error } = await supabaseAdmin.auth.admin.deleteUser(auth.userId);
           if (error) {
             logServerError("account-delete", error);

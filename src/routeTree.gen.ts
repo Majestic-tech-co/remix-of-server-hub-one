@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as OverviewRouteImport } from './routes/overview'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -146,6 +152,7 @@ const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/activity': typeof ActivityRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/activity': typeof ActivityRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/activity': typeof ActivityRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/activity'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/activity'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/activity'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -294,6 +306,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  ActivityRoute: typeof ActivityRoute
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRouteWithChildren
   OverviewRoute: typeof OverviewRoute
@@ -329,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -489,6 +509,7 @@ const AutomationRouteWithChildren = AutomationRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  ActivityRoute: ActivityRoute,
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRouteWithChildren,
   OverviewRoute: OverviewRoute,

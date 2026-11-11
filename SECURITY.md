@@ -23,6 +23,9 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - Rate-limit client IP uses only platform-set headers (x-vercel-forwarded-for / x-real-ip); never cf-connecting-ip unless Cloudflare is in front.
 - Per-user row caps (DB triggers) and a 200-server cap per account.
 - Commands stuck running >2h (agent restart) or pending >24h are marked failed by the daily purge.
+- Audit log (`audit_log`): every queued command (DB trigger, so it cannot be skipped), server create/delete, token rotation, terminal session start and data export. Read-only for users; kept 365 days.
+- Alerts (`alerts`, `evaluate_alerts()` via pg_cron each minute): server silent >5 min, CPU/memory/disk >= 90% (clears < 80%). Users can only acknowledge.
+- Tests: `npm test` runs all migrations on a real Postgres engine (PGlite) and checks RLS, grants, triggers and the maintenance functions, with Supabase's "expose new tables" both on and off. CI runs typecheck, tests, build and `npm audit` on every push.
 - Retention: metrics 30d, terminal sessions 7d, commands 90d (`purge_old_data()`, pg_cron).
 
 ## Known risks
@@ -33,7 +36,7 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - The install one-liner puts the token in the shell history of the machine where it is pasted; clear it afterwards (history -d) or rotate the token.
 
 ## Operator checklist
-- Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention job). The last one, `explicit_grants`, makes the app work with Supabase's "Automatically expose new tables" turned off.
+- Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention and alert jobs). The last one, `explicit_grants`, makes the app work with Supabase's "Automatically expose new tables" turned off.
 - Supabase Auth: enable email confirmation, leaked-password protection, min password length 10, CAPTCHA (Turnstile secret), and add the production URL to redirect URLs.
 - Set `VITE_TURNSTILE_SITE_KEY` in the host environment.
 - Never prefix secrets with `VITE_`.
