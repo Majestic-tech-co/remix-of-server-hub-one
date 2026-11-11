@@ -191,6 +191,34 @@ export async function getServerAccess(
   return { workspaceId: s.workspace_id as string, role: await getRole(admin, userId, s.workspace_id) };
 }
 
+// Terminal polls arrive several times a second; re-checking the caller's role with 3 database queries
+// each time was the main source of typing lag. A positive answer is cached for a few seconds, so
+// removing or demoting someone cuts off an open shell within TERMINAL_ACCESS_MS.
+const TERMINAL_ACCESS_MS = 10_000;
+const terminalAccess = new Map<string, number>();
+
+export function allowTerminal(userId: string, sessionId: string): void {
+  if (terminalAccess.size > 20_000) terminalAccess.clear();
+  terminalAccess.set(userId + ":" + sessionId, Date.now() + TERMINAL_ACCESS_MS);
+}
+
+/** May this user currently use this terminal session (owns it AND is still member+ of its workspace)? */
+export async function checkTerminalAccess(admin: AdminLike, userId: string, sessionId: string): Promise<boolean> {
+  const key = userId + ":" + sessionId;
+  const until = terminalAccess.get(key);
+  if (until && until > Date.now()) return true;
+  const { data } = await admin
+    .from("terminal_sessions").select("server_id").eq("id", sessionId).eq("user_id", userId).maybeSingle();
+  if (!data?.server_id) return false;
+  const access = await getServerAccess(admin, userId, data.server_id);
+  if (!roleAtLeast(access?.role, "member")) {
+    terminalAccess.delete(key);
+    return false;
+  }
+  allowTerminal(userId, sessionId);
+  return true;
+}
+
 /** Record a user-visible audit event. Never throws: auditing must not break the action itself. */
 export async function audit(
   admin: { from: (t: "audit_log") => any },

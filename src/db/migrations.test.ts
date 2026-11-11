@@ -455,3 +455,118 @@ describe("two-factor (TOTP) enforcement", () => {
     await db.exec(`RESET ROLE`);
   });
 });
+
+// ───────────── terminal polling functions ─────────────
+describe("terminal poll functions (framing, atomicity, access)", () => {
+  let db: PGlite;
+  const U = "a0000000-0000-0000-0000-000000000001";
+  const WS = "a1000000-0000-0000-0000-000000000001";
+  const SRV = "a2000000-0000-0000-0000-000000000001";
+  const OTHER = "a2000000-0000-0000-0000-000000000002";
+  const SES = "a3000000-0000-0000-0000-000000000001";
+
+  // the API routes call these as the service role
+  const svc = async (sql: string) => {
+    await db.exec("SET ROLE service_role");
+    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE"); }
+  };
+  const client = async (ack: number, input: string | null, close = false, cols: number | null = null) =>
+    (await svc(`SELECT * FROM public.terminal_client_poll('${SES}','${U}',${ack},${input === null ? "NULL" : `'${input}'`},${cols ?? "NULL"},NULL,${close})`)).rows[0];
+  const agent = async (acks: object, outputs: object[]) =>
+    (await svc(`SELECT public.terminal_agent_poll('${SRV}','${JSON.stringify(acks)}'::jsonb,'${JSON.stringify(outputs)}'::jsonb) AS r`)).rows[0].r as {
+      sessions: { id: string; status: string; input_b64: string }[]; closed: string[];
+    };
+
+  beforeAll(async () => {
+    db = await boot(false);
+    await db.exec(`
+      INSERT INTO auth.users (id,email) VALUES ('${U}','u@t.dev');
+      SET ROLE service_role;
+      INSERT INTO public.workspaces (id,name,created_by) VALUES ('${WS}','W','${U}');
+      INSERT INTO public.workspace_members (workspace_id,user_id,role) VALUES ('${WS}','${U}','owner');
+      INSERT INTO public.servers (id,user_id,workspace_id,name,agent_token_hash) VALUES
+        ('${SRV}','${U}','${WS}','s1','h1'),('${OTHER}','${U}','${WS}','s2','h2');
+      INSERT INTO public.terminal_sessions (id,server_id,user_id) VALUES ('${SES}','${SRV}','${U}');
+      RESET ROLE;`);
+  }, 120_000);
+  afterAll(async () => { await db?.close(); });
+
+  it("the functions are not callable from the browser or signed-out users", async () => {
+    for (const role of ["anon", "authenticated"]) {
+      await db.exec(`SET ROLE ${role}`);
+      await expect(db.query(`SELECT public.terminal_agent_poll('${SRV}','{}'::jsonb,'[]'::jsonb)`)).rejects.toThrow(DENIED);
+      await expect(db.query(`SELECT * FROM public.terminal_client_poll('${SES}','${U}',0,NULL,NULL,NULL,false)`)).rejects.toThrow(DENIED);
+      await db.exec(`RESET ROLE`);
+    }
+  });
+
+  it("keystroke chunks are stored one per line, so several can be decoded separately", async () => {
+    await client(0, "QQ==");   // 'A' (padded)
+    await client(0, "Qg==");   // 'B' (padded) — used to corrupt/lose everything after the first chunk
+    const r = await agent({}, []);
+    const mine = r.sessions.find((s) => s.id === SES)!;
+    expect(mine.input_b64).toBe("QQ==\nQg==\n");
+    // an agent that splits on newlines and decodes each part recovers both characters
+    const bytes = mine.input_b64.split("\n").filter(Boolean).map((p) => Buffer.from(p, "base64").toString());
+    expect(bytes.join("")).toBe("AB");
+  });
+
+  it("acknowledging consumed input drops exactly those chunks and keeps newer ones", async () => {
+    await agent({ [SES]: "QQ==\nQg==\n".length }, []);          // agent consumed A and B
+    expect((await agent({}, [])).sessions.find((s) => s.id === SES)!.input_b64).toBe("");
+    await client(0, "Qw==");                                      // C arrives after
+    await agent({ [SES]: 5 }, []);                                // agent had only seen up to its 5-char chunk
+    expect((await agent({}, [])).sessions.find((s) => s.id === SES)!.input_b64).toBe("");
+  });
+
+  it("output chunks are framed per line and acknowledged by character count", async () => {
+    await agent({}, [{ session_id: SES, b64: "SGk=" }, { session_id: SES, b64: "Cg==" }]); // "Hi", "\n"
+    const first = await client(0, null);
+    expect(first.r_output).toBe("SGk=\nCg==\n");
+    const parts = (first.r_output as string).split("\n").filter(Boolean).map((p) => Buffer.from(p, "base64").toString());
+    expect(parts.join("")).toBe("Hi\n");
+    // acknowledging what was received returns only newer output
+    const ack = (first.r_output as string).length;
+    await agent({}, [{ session_id: SES, b64: "IQ==" }]);
+    expect((await client(ack, null)).r_output).toBe("IQ==\n");
+    expect((await client(ack + 5, null)).r_output).toBe("");
+  });
+
+  it("output beyond the cap drops whole chunks from the front", async () => {
+    const big = "A".repeat(400_000);
+    await agent({}, [{ session_id: SES, b64: big }, { session_id: SES, b64: big }, { session_id: SES, b64: big }]);
+    const buf = (await svc(`SELECT output_buffer AS b FROM public.terminal_sessions WHERE id='${SES}'`)).rows[0].b as string;
+    expect(buf.length).toBeLessThanOrEqual(1_000_000);
+    expect(buf.endsWith("\n")).toBe(true);
+    expect(buf.split("\n").filter(Boolean).every((p) => p === big)).toBe(true); // no partial chunks
+  });
+
+  it("only the owner's session can be polled, and only an agent's own sessions are touched", async () => {
+    const wrong = (await svc(`SELECT * FROM public.terminal_client_poll('${SES}','${A_USER}',0,'QQ==',NULL,NULL,false)`)).rows[0];
+    expect(wrong.r_found).toBe(false);
+    // an agent for ANOTHER server can neither read nor modify this session
+    const r = (await svc(`SELECT public.terminal_agent_poll('${OTHER}','{"${SES}":999}'::jsonb,'[{"session_id":"${SES}","b64":"ZGVmYWNl"}]'::jsonb) AS r`)).rows[0].r as { sessions: unknown[] };
+    expect(r.sessions).toEqual([]);
+    const buf = (await svc(`SELECT output_buffer FROM public.terminal_sessions WHERE id='${SES}'`)).rows[0].output_buffer as string;
+    expect(buf).not.toContain("ZGVmYWNl");
+  });
+
+  it("closing from the browser is reported to the agent so it can kill the shell", async () => {
+    const r = await client(0, null, true);
+    expect(r.r_status).toBe("closed");
+    const agentView = await agent({}, []);
+    expect(agentView.sessions.find((s) => s.id === SES)!.status).toBe("closed");
+    expect(agentView.closed).toContain(SES);
+    // further input to a closed session is ignored
+    await client(0, "QQ==");
+    expect((await svc(`SELECT input_buffer FROM public.terminal_sessions WHERE id='${SES}'`)).rows[0].input_buffer).toBe("");
+  });
+
+  it("resizing from the browser is applied", async () => {
+    const r = await svc(`INSERT INTO public.terminal_sessions (id,server_id,user_id) VALUES ('a3000000-0000-0000-0000-000000000002','${SRV}','${U}') RETURNING id`);
+    const res = (await svc(`SELECT * FROM public.terminal_client_poll('a3000000-0000-0000-0000-000000000002','${U}',0,NULL,132,NULL,false)`)).rows[0];
+    expect(r.rows).toHaveLength(1);
+    expect(res.r_cols).toBe(132);
+  });
+});
+const A_USER = "a0000000-0000-0000-0000-0000000000ff";

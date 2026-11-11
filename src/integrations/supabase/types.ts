@@ -514,7 +514,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      terminal_agent_poll: {
+        Args: { p_server: string; p_acks: Json; p_outputs: Json }
+        Returns: Json
+      }
+      terminal_client_poll: {
+        Args: {
+          p_session: string
+          p_user: string
+          p_output_ack: number
+          p_input: string
+          p_cols: number | null
+          p_rows: number | null
+          p_close: boolean
+        }
+        Returns: {
+          r_found: boolean
+          r_status: string
+          r_output: string
+          r_seq: number
+          r_cols: number
+          r_rows: number
+        }[]
+      }
     }
     Enums: {
       command_status: "pending" | "running" | "completed" | "failed"

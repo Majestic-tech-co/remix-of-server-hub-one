@@ -4,7 +4,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { audit, errors, getServerAccess, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
+import { allowTerminal, audit, errors, getServerAccess, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
 
 const Schema = z.object({
@@ -59,6 +59,7 @@ export const Route = createFileRoute("/api/terminal/start")({
           return errors.server();
         }
 
+        allowTerminal(auth.userId, created.id);
         await audit(supabaseAdmin, auth.userId, "terminal.started", { type: "server", id: parsed.data.server_id }, {}, access.workspaceId);
         return json({ session_id: created.id });
       },

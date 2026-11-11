@@ -8,6 +8,7 @@ const read = (name: string) =>
 const script = read("install.sh");
 const uninstall = read("uninstall.sh");
 const hasBash = spawnSync("bash", ["--version"]).status === 0;
+const hasPython = spawnSync("python3", ["--version"]).status === 0; // (on Windows python3 may be a Store stub)
 
 describe("agent uninstaller (uninstall.sh)", () => {
   it.skipIf(!hasBash)("is valid bash", () => {
@@ -41,6 +42,18 @@ describe("agent installer (install.sh)", () => {
   it("creates secret files with a restrictive umask", () => {
     expect(script).toMatch(/umask 077[\s\S]*fleet-agent\.conf/);
     expect(script).toContain("chmod 600 /etc/fleet-agent.conf /etc/fleet-agent.curl");
+  });
+
+  it("decodes keystroke chunks one per line (padding between chunks must not drop input)", () => {
+    expect(script).toContain('ib64.split("\\n")');
+    expect(script).not.toMatch(/raw = base64\.b64decode\(ib64\)/);
+  });
+
+  it.skipIf(!hasPython)("the embedded terminal agent is valid python", () => {
+    const m = /<<'PYAGENT'\n([\s\S]*?)\nPYAGENT/.exec(script);
+    expect(m).toBeTruthy();
+    const py = spawnSync("python3", ["-c", "import sys; compile(sys.stdin.read(), 'terminal.py', 'exec')"], { input: m![1] });
+    expect(py.status, py.stderr?.toString()).toBe(0);
   });
 
   it("sends request bodies via stdin, not arguments", () => {

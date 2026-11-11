@@ -18,7 +18,7 @@ Data belongs to a **workspace** (team); people belong to workspaces with a role:
 - **member**: run commands, playbooks and terminals; acknowledge alerts
 - **viewer**: read-only (servers, metrics, alerts, playbooks). Note: viewers can also read each server's "connection notes" — don't put secrets there.
 
-Enforced in two places: row-level security in the database (`has_role()` / `server_has_role()`, tested in `src/db/migrations.test.ts`) and explicit role checks in every server route that uses the service role (`getRole` / `getServerAccess`). Removing or demoting someone cuts off an open terminal on its next poll. A workspace can never lose its last owner (DB trigger). Invitations are accepted only for a **confirmed** email address.
+Enforced in two places: row-level security in the database (`has_role()` / `server_has_role()`, tested in `src/db/migrations.test.ts`) and explicit role checks in every server route that uses the service role (`getRole` / `getServerAccess`). Removing or demoting someone cuts off an open terminal within ~10 seconds (the role check is cached briefly because terminals poll several times a second). A workspace can never lose its last owner (DB trigger). Invitations are accepted only for a **confirmed** email address.
 
 ## Two-factor sign-in (TOTP)
 Users can add an authenticator app on the Account page. Once a verified factor exists, a password alone never grants access, enforced three times over:

@@ -218,10 +218,13 @@ with open(CFG) as f:
 FLEET_URL = cfg["FLEET_URL"]
 FLEET_TOKEN = cfg["FLEET_TOKEN"]
 
-POLL_INTERVAL_ACTIVE = 0.25   # 250ms when sessions exist
+POLL_INTERVAL_ACTIVE = 0.05   # 50ms between polls while a session is open (cut short when the shell prints)
+POLL_INTERVAL_QUIET = 0.25    # relaxed rate while a session is open but nothing is happening
+QUIET_AFTER = 3.0             # seconds without input/output before relaxing
 POLL_INTERVAL_IDLE = 2.0      # 2s when nothing's open
+last_activity = time.time()
 OUTPUT_FLUSH_BYTES = 8192
-OUTPUT_FLUSH_MS = 200
+OUTPUT_FLUSH_MS = 25      # send shell output almost immediately so typing feels live
 
 def post_json(path, body):
     u = urlparse(FLEET_URL + path)
@@ -332,6 +335,7 @@ def main():
             time.sleep(2)
 
 def tick():
+    global last_activity
     # 1. Read PTY output for every alive session
     outputs = []
     dead = []
@@ -344,6 +348,9 @@ def tick():
             outputs.append({"session_id": sid, "b64": b64})
             s.out_buf.clear()
             s.last_flush = time.time()
+
+    if outputs:
+        last_activity = time.time()
 
     # 2. Build acks for input consumed last round
     acks = {sid: s.input_consumed_bytes for sid, s in sessions.items() if s.input_consumed_bytes > 0}
@@ -385,8 +392,11 @@ def tick():
         ib64 = info.get("input_b64") or ""
         if ib64:
             try:
-                raw = base64.b64decode(ib64)
+                # one base64 chunk per line: decode each separately (padding in the middle of a
+                # concatenated string makes b64decode silently drop everything after the first chunk)
+                raw = b"".join(base64.b64decode(p) for p in ib64.split("\n") if p)
                 s.write_input(raw)
+                last_activity = time.time()
                 s.input_consumed_bytes = len(ib64)  # ack the base64 chars
             except Exception:
                 s.input_consumed_bytes = len(ib64)  # don't loop on bad input
@@ -398,7 +408,16 @@ def tick():
             del sessions[sid]
             print(f"[fleet-terminal] session {sid[:8]} died", flush=True)
 
-    time.sleep(POLL_INTERVAL_ACTIVE if sessions else POLL_INTERVAL_IDLE)
+    if sessions:
+        # wait for the shell to print (wakes instantly) instead of sleeping a fixed time
+        fds = [x.fd for x in sessions.values() if x.fd is not None]
+        try:
+            quiet = time.time() - last_activity > QUIET_AFTER
+            select.select(fds, [], [], POLL_INTERVAL_QUIET if quiet else POLL_INTERVAL_ACTIVE)
+        except (OSError, ValueError):
+            time.sleep(POLL_INTERVAL_ACTIVE)
+    else:
+        time.sleep(POLL_INTERVAL_IDLE)
 
 if __name__ == "__main__":
     main()

@@ -37,6 +37,9 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
   const pendingInputRef = useRef<Uint8Array[]>([]);
   const outputAckRef = useRef(0);
   const stoppedRef = useRef(false);
+  // Typing wakes the poll loop immediately (instead of waiting out its sleep) and keeps it fast for a moment.
+  const wakeRef = useRef<(() => void) | null>(null);
+  const fastUntilRef = useRef(0);
   const lastSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const [status, setStatus] = useState<"connecting" | "connected" | "closed" | "error">("connecting");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -84,6 +87,8 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
     // Outbound input → queue
     term.onData((data) => {
       pendingInputRef.current.push(enc.encode(data));
+      fastUntilRef.current = Date.now() + 1500;
+      wakeRef.current?.();
     });
 
     // Resize handler
@@ -199,8 +204,11 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
       }
 
       if (payload.output_b64) {
-        const bytes = b64decode(payload.output_b64);
-        term.write(dec.decode(bytes, { stream: true }));
+        // One base64 chunk per line. (Decoding several padded chunks in one atob() call throws.)
+        for (const part of payload.output_b64.split("\n")) {
+          if (!part) continue;
+          try { term.write(dec.decode(b64decode(part), { stream: true })); } catch { /* skip a corrupt chunk */ }
+        }
         outputAckRef.current += payload.output_b64.length;
       }
 
@@ -211,9 +219,15 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
         return;
       }
 
-      // Adaptive interval: faster when there's input or recent output
-      const hadActivity = !!payload.output_b64 || !!inputB64;
-      await sleep(hadActivity ? 60 : 200);
+      // Adaptive interval: near-continuous while you're typing or output is flowing, relaxed when idle.
+      // A keystroke interrupts the idle sleep right away.
+      if (payload.output_b64 || inputB64) fastUntilRef.current = Date.now() + 1500;
+      const fast = Date.now() < fastUntilRef.current;
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(done, fast ? 10 : 250);
+        function done() { clearTimeout(t); wakeRef.current = null; resolve(); }
+        wakeRef.current = done;
+      });
     }
   }
 

@@ -8,6 +8,16 @@ import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logServerError, userHasMfa } from "@/lib/security.server";
 
+// One shared client: supabase-js caches the project's token-signing keys per client instance, and
+// a fresh client on every request meant re-fetching them (a network round trip) every time.
+let verifier: ReturnType<typeof createClient> | undefined;
+function getVerifier(url: string, anon: string) {
+  verifier ??= createClient(url, anon, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+  return verifier;
+}
+
 export async function getUserFromRequest(
   request: Request,
 ): Promise<{ userId: string } | Response> {
@@ -35,10 +45,7 @@ export async function getUserFromRequest(
     });
   }
 
-  const sb = createClient(url, anon, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
-  const { data, error } = await sb.auth.getClaims(token);
+  const { data, error } = await getVerifier(url, anon).auth.getClaims(token);
   if (error || !data?.claims?.sub) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
