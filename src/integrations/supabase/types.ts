@@ -228,7 +228,7 @@ export type Database = {
       }
       servers: {
         Row: {
-          agent_token: string
+          agent_token_hash: string
           connection_notes: string | null
           created_at: string
           hostname: string | null
@@ -244,7 +244,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          agent_token?: string
+          agent_token_hash: string
           connection_notes?: string | null
           created_at?: string
           hostname?: string | null
@@ -260,7 +260,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          agent_token?: string
+          agent_token_hash?: string
           connection_notes?: string | null
           created_at?: string
           hostname?: string | null

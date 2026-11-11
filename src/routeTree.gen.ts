@@ -24,6 +24,8 @@ import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.co
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
 import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
+import { Route as ApiServersCreateRouteImport } from './routes/api.servers.create'
+import { Route as ApiServersRotateTokenRouteImport } from './routes/api.servers.rotate-token'
 import { Route as ApiTerminalPollRouteImport } from './routes/api.terminal.poll'
 import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.start'
 
@@ -102,6 +104,16 @@ const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
   path: '/api/agent/terminal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiServersCreateRoute = ApiServersCreateRouteImport.update({
+  id: '/api/servers/create',
+  path: '/api/servers/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiServersRotateTokenRoute = ApiServersRotateTokenRouteImport.update({
+  id: '/api/servers/rotate-token',
+  path: '/api/servers/rotate-token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTerminalPollRoute = ApiTerminalPollRouteImport.update({
   id: '/api/terminal/poll',
   path: '/api/terminal/poll',
@@ -129,6 +141,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/servers/create': typeof ApiServersCreateRoute
+  '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -148,6 +162,8 @@ export interface FileRoutesByTo {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/servers/create': typeof ApiServersCreateRoute
+  '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -168,6 +184,8 @@ export interface FileRoutesById {
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
+  '/api/servers/create': typeof ApiServersCreateRoute
+  '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/terminal/poll': typeof ApiTerminalPollRoute
   '/api/terminal/start': typeof ApiTerminalStartRoute
 }
@@ -189,6 +207,8 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/servers/create'
+    | '/api/servers/rotate-token'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +228,8 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/servers/create'
+    | '/api/servers/rotate-token'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   id:
@@ -227,6 +249,8 @@ export interface FileRouteTypes {
     | '/api/agent/install'
     | '/api/agent/metrics'
     | '/api/agent/terminal'
+    | '/api/servers/create'
+    | '/api/servers/rotate-token'
     | '/api/terminal/poll'
     | '/api/terminal/start'
   fileRoutesById: FileRoutesById
@@ -246,6 +270,8 @@ export interface RootRouteChildren {
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
   ApiAgentTerminalRoute: typeof ApiAgentTerminalRoute
+  ApiServersCreateRoute: typeof ApiServersCreateRoute
+  ApiServersRotateTokenRoute: typeof ApiServersRotateTokenRoute
   ApiTerminalPollRoute: typeof ApiTerminalPollRoute
   ApiTerminalStartRoute: typeof ApiTerminalStartRoute
 }
@@ -357,6 +383,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentTerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/servers/create': {
+      id: '/api/servers/create'
+      path: '/api/servers/create'
+      fullPath: '/api/servers/create'
+      preLoaderRoute: typeof ApiServersCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/servers/rotate-token': {
+      id: '/api/servers/rotate-token'
+      path: '/api/servers/rotate-token'
+      fullPath: '/api/servers/rotate-token'
+      preLoaderRoute: typeof ApiServersRotateTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/terminal/poll': {
       id: '/api/terminal/poll'
       path: '/api/terminal/poll'
@@ -401,6 +441,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentInstallRoute: ApiAgentInstallRoute,
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
   ApiAgentTerminalRoute: ApiAgentTerminalRoute,
+  ApiServersCreateRoute: ApiServersCreateRoute,
+  ApiServersRotateTokenRoute: ApiServersRotateTokenRoute,
   ApiTerminalPollRoute: ApiTerminalPollRoute,
   ApiTerminalStartRoute: ApiTerminalStartRoute,
 }

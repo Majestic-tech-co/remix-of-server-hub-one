@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
+import { SERVER_COLUMNS, authedPost, buildInstallCommand } from "@/lib/servers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
@@ -58,7 +59,6 @@ interface ServerRow {
   region: string | null;
   instance_id: string | null;
   tags: string[];
-  agent_token: string;
   last_seen_at: string | null;
   connection_notes: string | null;
 }
@@ -90,7 +90,7 @@ function ServerDetail() {
     if (!user) return;
     const since = new Date(Date.now() - rangeMin * 60 * 1000).toISOString();
     const [{ data: s }, { data: m }] = await Promise.all([
-      supabase.from("servers").select("*").eq("id", id).single(),
+      supabase.from("servers").select(SERVER_COLUMNS).eq("id", id).single(),
       supabase
         .from("metrics")
         .select("*")
@@ -191,9 +191,12 @@ function ServerDetail() {
               <span>· {metrics.length} samples</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={loadAll}>
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </Button>
+          <div className="flex items-center gap-1">
+            <RotateTokenButton serverId={server.id} serverName={server.name} />
+            <Button variant="ghost" size="sm" onClick={loadAll}>
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -341,7 +344,7 @@ function InfoPanel({ server, onUpdated }: { server: ServerRow; onUpdated: (s: Se
       .from("servers")
       .update({ connection_notes: value })
       .eq("id", server.id)
-      .select()
+      .select(SERVER_COLUMNS)
       .single();
     setSaving(false);
     if (error) {
@@ -474,6 +477,49 @@ interface ChartPoint {
   rx: number | null;
   tx: number | null;
   load: number | null;
+}
+
+function RotateTokenButton({ serverId, serverName }: { serverId: string; serverName: string }) {
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [cmd, setCmd] = useState("");
+
+  const rotate = async () => {
+    if (!window.confirm(`Issue a new agent token for ${serverName}? The agent currently installed there will stop reporting until you re-run the install command.`)) return;
+    setBusy(true);
+    const { data, error } = await authedPost<{ agent_token: string }>("/api/servers/rotate-token", { server_id: serverId });
+    setBusy(false);
+    if (error || !data) return toast.error(error ?? "Something went wrong. Please try again.");
+    setCmd(buildInstallCommand(data.agent_token));
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <Button variant="ghost" size="sm" onClick={rotate} disabled={busy}>
+        <RefreshCw className="h-4 w-4" /> {busy ? "Rotating…" : "Rotate agent token"}
+      </Button>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setCmd(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New install command</DialogTitle>
+            <DialogDescription>
+              Run this on <span className="font-mono text-foreground">{serverName}</span> as root. This token is shown only once — copy it now.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md bg-terminal p-4">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-terminal-foreground">{cmd}</pre>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(cmd); toast.success("Copied"); }}>
+              <Copy className="h-4 w-4" /> Copy
+            </Button>
+            <Button onClick={() => setOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {

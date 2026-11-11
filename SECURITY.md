@@ -19,14 +19,16 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - Errors: generic to users (`src/lib/errors.ts`, `errors.*` in security.server); detail logged server-side only.
 - DB CHECK constraints are the server-side validation for direct client writes.
 
+- Agent tokens: only a SHA-256 hash is stored; the raw token is shown once (create / rotate) and the hash is not readable from the browser.
+- Retention: metrics 30d, terminal sessions 7d, commands 90d (`purge_old_data()`, pg_cron).
+
 ## Known risks
 - CSP allows `'unsafe-inline'` scripts (TanStack Start inline hydration). Move to nonces when supported.
 - In-memory rate limiter is per instance; add a WAF/Redis limiter for strict global limits.
-- `agent_token` stored in plaintext and readable by its owner (needed to show the install command).
 - The agent and terminal run as root on the target server by design.
 
 ## Operator checklist
-- Apply `supabase/migrations/20261110000000_security_hardening.sql`.
+- Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention job).
 - Supabase Auth: enable email confirmation, leaked-password protection, min password length 10, CAPTCHA (Turnstile secret), and add the production URL to redirect URLs.
 - Set `VITE_TURNSTILE_SITE_KEY` in the host environment.
 - Never prefix secrets with `VITE_`.

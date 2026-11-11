@@ -79,6 +79,17 @@ export function clientIp(request: Request): string {
   );
 }
 
+export async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** 192-bit random token, hex encoded. Shown once, only its hash is stored. */
+export function generateAgentToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // Small stable hash so raw tokens never become map keys / log lines.
 export function shortHash(input: string): string {
   let h = 5381;
@@ -125,7 +136,7 @@ export async function authenticateAgent(
   const rl = rateLimit(`agent-token:${shortHash(token)}`, opts.limit, opts.windowMs ?? 60_000);
   if (!rl.ok) return errors.tooMany(rl.retryAfter);
 
-  const { data: srv, error } = await admin.from("servers").select("id").eq("agent_token", token).maybeSingle();
+  const { data: srv, error } = await admin.from("servers").select("id").eq("agent_token_hash", await sha256Hex(token)).maybeSingle();
   if (error) {
     logServerError("agent-auth", error);
     return errors.server();
