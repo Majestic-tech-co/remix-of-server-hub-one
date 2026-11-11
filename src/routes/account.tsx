@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { authedPost } from "@/lib/servers";
 import { Card } from "@/components/ui/card";
+import { TwoFactorCard } from "@/components/TwoFactorCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,8 @@ function Account() {
         <h2 className="mt-1 text-3xl font-semibold tracking-tight">Your account</h2>
         <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
       </div>
+
+      <TwoFactorCard />
 
       <Card className="p-6">
         <div className="flex items-start gap-3">

@@ -5,11 +5,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { audit, errors, getRole, json, logServerError, rateLimit } from "@/lib/security.server";
+import { audit, errors, getRole, json, logServerError, rateLimit, userHasMfa } from "@/lib/security.server";
 
 const Name = z.string().trim().min(1).max(100);
 const Schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), name: Name }).strict(),
+  z.object({ action: z.literal("set_mfa"), workspace_id: z.string().uuid(), require: z.boolean() }).strict(),
   z.object({ action: z.literal("rename"), workspace_id: z.string().uuid(), name: Name }).strict(),
   z.object({ action: z.literal("delete"), workspace_id: z.string().uuid(), confirm_name: z.string().max(100) }).strict(),
 ]);
@@ -54,6 +55,17 @@ export const Route = createFileRoute("/api/team/workspace")({
           const role = await getRole(supabaseAdmin, auth.userId, d.workspace_id);
           if (!role) return errors.notFound();
           if (role !== "owner") return json({ error: "Only an owner can do that." }, 403);
+
+          if (d.action === "set_mfa") {
+            // The owner must have two-factor themselves first, or this would lock them out of their own team.
+            if (d.require && !(await userHasMfa(supabaseAdmin, auth.userId))) {
+              return json({ error: "Set up two-factor on your own account first (Account page), then turn this on." }, 400);
+            }
+            const { error } = await supabaseAdmin.from("workspaces").update({ require_mfa: d.require }).eq("id", d.workspace_id);
+            if (error) { logServerError("team-workspace", error); return errors.server(); }
+            await audit(supabaseAdmin, auth.userId, d.require ? "workspace.mfa_required" : "workspace.mfa_optional", { type: "workspace", id: d.workspace_id }, {}, d.workspace_id);
+            return json({ ok: true });
+          }
 
           if (d.action === "rename") {
             const { error } = await supabaseAdmin.from("workspaces").update({ name: d.name }).eq("id", d.workspace_id);

@@ -7,10 +7,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { audit, errors, getRole, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
+import { audit, errors, forgetMfa, getRole, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
 
 const Schema = z.object({
-  action: z.enum(["set_role", "remove", "leave"]),
+  action: z.enum(["set_role", "remove", "leave", "reset_mfa"]),
   workspace_id: z.string().uuid(),
   user_id: z.string().uuid().optional(),
   role: z.enum(["owner", "admin", "member", "viewer"]).optional(),
@@ -56,6 +56,21 @@ export const Route = createFileRoute("/api/team/member")({
           if (!roleAtLeast(callerRole, "admin")) return FORBIDDEN();
           const targetRole = await getRole(supabaseAdmin, d.user_id, d.workspace_id);
           if (!targetRole) return errors.notFound();
+
+          // ---- reset_mfa: owners only. For a teammate who lost their authenticator. They keep their
+          // password; their next sign-in has no code step and they can set 2FA up again. Always audited.
+          if (d.action === "reset_mfa") {
+            if (callerRole !== "owner") return FORBIDDEN();
+            const { data: fs, error: lErr } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: d.user_id });
+            if (lErr) { logServerError("team-member", lErr); return errors.server(); }
+            for (const f of fs?.factors ?? []) {
+              const { error: dErr } = await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: f.id, userId: d.user_id });
+              if (dErr) { logServerError("team-member", dErr); return errors.server(); }
+            }
+            forgetMfa(d.user_id);
+            await audit(supabaseAdmin, auth.userId, "team.mfa_reset", { type: "workspace", id: d.workspace_id }, { user_id: d.user_id }, d.workspace_id);
+            return json({ ok: true });
+          }
 
           if (callerRole !== "owner") {
             // admins: only members/viewers, and only up to member/viewer

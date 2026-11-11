@@ -491,18 +491,21 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          require_mfa: boolean
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
           name: string
+          require_mfa?: boolean
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
           name?: string
+          require_mfa?: boolean
         }
         Relationships: []
       }

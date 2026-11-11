@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/errors";
@@ -6,8 +6,17 @@ import { friendlyError } from "@/lib/errors";
 export type AuthResult = { error: string | null };
 export type SignUpResult = AuthResult & { needsConfirmation?: boolean };
 
+export type MfaState = {
+  /** user has two-factor set up but this session has not entered a code yet */
+  required: boolean;
+  /** user has a verified authenticator factor */
+  enrolled: boolean;
+};
+
 interface AuthContextValue {
   user: User | null;
+  mfa: MfaState;
+  refreshMfa: () => Promise<void>;
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<AuthResult>;
@@ -23,26 +32,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mfa, setMfa] = useState<MfaState>({ required: false, enrolled: false });
+
+  // aal1 = password only, aal2 = a code was entered. nextLevel === "aal2" means a verified factor exists.
+  const refreshMfa = useCallback(async () => {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    setMfa({
+      enrolled: data?.nextLevel === "aal2",
+      required: data?.nextLevel === "aal2" && data?.currentLevel !== "aal2",
+    });
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      // (don't call other auth methods synchronously inside this callback)
+      if (s) setTimeout(() => { refreshMfa(); }, 0);
+      else setMfa({ required: false, enrolled: false });
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
+      if (data.session) await refreshMfa();
       setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [refreshMfa]);
 
   const value: AuthContextValue = {
     user,
     session,
     loading,
+    mfa,
+    refreshMfa,
     signIn: async (email, password, captchaToken) => {
       const { error } = await supabase.auth.signInWithPassword({
         email,

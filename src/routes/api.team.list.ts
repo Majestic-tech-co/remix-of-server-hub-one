@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserFromRequest } from "@/integrations/supabase/route-auth";
-import { errors, getRole, json, logServerError, rateLimit, roleAtLeast } from "@/lib/security.server";
+import { errors, getRole, json, logServerError, rateLimit, roleAtLeast, userHasMfa } from "@/lib/security.server";
 
 const Schema = z.object({ workspace_id: z.string().uuid() }).strict();
 
@@ -35,7 +35,8 @@ export const Route = createFileRoute("/api/team/list")({
           const withEmail = await Promise.all(
             (members ?? []).map(async (m) => {
               const { data } = await supabaseAdmin.auth.admin.getUserById(m.user_id);
-              return { user_id: m.user_id, role: m.role, created_at: m.created_at, email: data.user?.email ?? "(unknown)", is_you: m.user_id === auth.userId };
+              const mfa = await userHasMfa(supabaseAdmin, m.user_id).catch(() => false);
+              return { user_id: m.user_id, role: m.role, created_at: m.created_at, email: data.user?.email ?? "(unknown)", is_you: m.user_id === auth.userId, mfa };
             }),
           );
 

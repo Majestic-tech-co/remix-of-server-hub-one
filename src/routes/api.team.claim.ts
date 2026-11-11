@@ -16,11 +16,11 @@ async function loadWorkspaces(uid: string) {
   if (error) throw error;
   const ids = (members ?? []).map((m) => m.workspace_id);
   if (ids.length === 0) return [];
-  const { data: ws, error: wErr } = await supabaseAdmin.from("workspaces").select("id, name").in("id", ids);
+  const { data: ws, error: wErr } = await supabaseAdmin.from("workspaces").select("id, name, require_mfa").in("id", ids);
   if (wErr) throw wErr;
-  const names = new Map((ws ?? []).map((w) => [w.id, w.name]));
+  const info = new Map((ws ?? []).map((w) => [w.id, w]));
   return (members ?? [])
-    .map((m) => ({ id: m.workspace_id, name: names.get(m.workspace_id) ?? "Workspace", role: m.role }))
+    .map((m) => ({ id: m.workspace_id, name: info.get(m.workspace_id)?.name ?? "Workspace", role: m.role, require_mfa: !!info.get(m.workspace_id)?.require_mfa }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

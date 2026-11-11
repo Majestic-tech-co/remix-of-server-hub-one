@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { authedPost } from "@/lib/servers";
 
 export type Role = "viewer" | "member" | "admin" | "owner";
-export type Workspace = { id: string; name: string; role: Role };
+export type Workspace = { id: string; name: string; role: Role; require_mfa: boolean };
 
 const RANK: Record<Role, number> = { viewer: 1, member: 2, admin: 3, owner: 4 };
 const STORAGE_KEY = "fleet-workspace";
@@ -26,13 +26,13 @@ function readStored(): string | null {
 }
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, mfa } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!user) return;
+    if (!user || mfa.required) return; // the API refuses password-only sessions for 2FA accounts
     // Accepts pending invitations, creates a personal workspace if needed, returns memberships.
     const { data } = await authedPost<{ workspaces: Workspace[] }>("/api/team/claim", {});
     const list = data?.workspaces ?? [];
@@ -42,7 +42,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return list.some((w) => w.id === wanted) ? wanted : (list[0]?.id ?? null);
     });
     setLoading(false);
-  }, [user]);
+  }, [user, mfa.required]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -54,7 +54,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     refresh();
-  }, [user?.id, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, mfa.required]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setCurrent = useCallback((id: string) => {
     setCurrentId(id);

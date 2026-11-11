@@ -2,9 +2,10 @@ import { useEffect, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Activity } from "lucide-react";
+import { MfaChallenge } from "@/components/MfaChallenge";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, mfa } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +21,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  // Password accepted but the code step is still pending: show only the code prompt.
+  if (mfa.required) return <MfaChallenge />;
 
   return <>{children}</>;
 }

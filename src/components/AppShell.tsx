@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertsBell } from "@/components/AlertsBell";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
+import { useWorkspace } from "@/lib/workspace";
+import { ShieldAlert } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -78,8 +80,12 @@ function AppSidebar() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, mfa } = useAuth();
+  const { current } = useWorkspace();
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
   const navigate = useNavigate();
+  // This team requires two-factor and you haven't set it up: nothing in it will load until you do.
+  const blockedByMfa = !!current?.require_mfa && !mfa.enrolled && pathname !== "/account";
 
   return (
     <SidebarProvider>
@@ -106,7 +112,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             </div>
           </header>
-          <main className="flex-1 p-6 lg:p-8">{children}</main>
+          <main className="flex-1 p-6 lg:p-8">
+            {blockedByMfa ? (
+              <div className="glass gradient-border mx-auto mt-16 max-w-md rounded-2xl p-8 text-center">
+                <ShieldAlert className="mx-auto h-8 w-8 text-warning" />
+                <h2 className="mt-4 font-display text-xl font-bold">Two-factor required</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  "{current?.name}" requires everyone to use two-factor sign-in. Set it up once on your account page to get in.
+                </p>
+                <Link to="/account" className="btn-glow mt-5 inline-flex h-9 items-center rounded-md px-4 text-sm font-medium text-primary-foreground">
+                  Set up two-factor
+                </Link>
+              </div>
+            ) : (
+              children
+            )}
+          </main>
         </SidebarInset>
       </div>
     </SidebarProvider>

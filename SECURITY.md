@@ -20,6 +20,13 @@ Data belongs to a **workspace** (team); people belong to workspaces with a role:
 
 Enforced in two places: row-level security in the database (`has_role()` / `server_has_role()`, tested in `src/db/migrations.test.ts`) and explicit role checks in every server route that uses the service role (`getRole` / `getServerAccess`). Removing or demoting someone cuts off an open terminal on its next poll. A workspace can never lose its last owner (DB trigger). Invitations are accepted only for a **confirmed** email address.
 
+## Two-factor sign-in (TOTP)
+Users can add an authenticator app on the Account page. Once a verified factor exists, a password alone never grants access, enforced three times over:
+- **Screen:** the app shows only the code prompt until the session reaches aal2.
+- **API:** every route that authenticates the browser (`getUserFromRequest`) returns 401 `mfa_required` for an aal1 session when the user has a verified factor (fails closed if the auth API errors; answers cached 30 s).
+- **Database:** `has_role()` / `mfa_ok()` deny any workspace data to an aal1 session of a user who has a factor, so a stolen password used straight against Supabase gets nothing.
+Teams can **require** 2FA (owner setting): members without it are locked out of that team until they set it up (database + API + a notice in the app). An owner can reset a teammate's 2FA from the Team page if they lose their authenticator (audited). There are no recovery codes: a sole owner who loses their authenticator must use the Supabase dashboard (Authentication → Users → the user → remove factor).
+
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
 - Agent endpoints: per-server token, per-token and per-IP rate limits, strict zod schemas, no CORS.

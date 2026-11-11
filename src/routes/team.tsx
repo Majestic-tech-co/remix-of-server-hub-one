@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, MailPlus, Plus, Trash2, UserMinus, Users } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, Plus, ShieldCheck, Trash2, UserMinus, Users } from "lucide-react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { useWorkspace, type Role } from "@/lib/workspace";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/team")({
   ),
 });
 
-type Member = { user_id: string; email: string; role: Role; created_at: string; is_you: boolean };
+type Member = { user_id: string; email: string; role: Role; created_at: string; is_you: boolean; mfa: boolean };
 type Invite = { id: string; email: string; role: Exclude<Role, "owner">; created_at: string };
 
 const ROLE_HELP: Record<Role, string> = {
@@ -149,7 +149,12 @@ function TeamPage() {
                   <div className="truncate font-medium">
                     {m.email} {m.is_you && <span className="font-normal text-muted-foreground">(you)</span>}
                   </div>
-                  <div className="font-mono text-[11px] text-muted-foreground">joined {timeAgo(m.created_at)}</div>
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                    <span>joined {timeAgo(m.created_at)}</span>
+                    {can("admin") && (m.mfa
+                      ? <span className="inline-flex items-center gap-1 text-success"><ShieldCheck className="h-3 w-3" /> 2FA</span>
+                      : <span className="text-warning">no 2FA</span>)}
+                  </div>
                 </div>
                 {canManage(m) ? (
                   <select
@@ -163,6 +168,18 @@ function TeamPage() {
                   </select>
                 ) : (
                   <RoleBadge role={m.role} />
+                )}
+                {isOwner && !m.is_you && m.mfa && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    title="Reset two-factor (for a lost authenticator)"
+                    onClick={() => window.confirm(`Reset two-factor for ${m.email}? Use this only if they lost their authenticator. Their next sign-in will need just their password, and they should set 2FA up again.`) && act("/api/team/member", { action: "reset_mfa", workspace_id: current.id, user_id: m.user_id }, "Two-factor reset.")}
+                    aria-label={`Reset two-factor for ${m.email}`}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
                 )}
                 {canManage(m) && (
                   <Button
@@ -248,6 +265,23 @@ function TeamPage() {
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} aria-label="Team name" required />
             <Button type="submit" variant="secondary" disabled={busy || name.trim() === current.name}>Rename</Button>
           </form>
+        )}
+        {isOwner && (
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 accent-[var(--color-primary)]"
+              checked={current.require_mfa}
+              disabled={busy}
+              onChange={(e) => act("/api/team/workspace", { action: "set_mfa", workspace_id: current.id, require: e.target.checked }, e.target.checked ? "Two-factor is now required." : "Two-factor is no longer required.").then(refresh)}
+            />
+            <span>
+              <span className="font-medium">Require two-factor for everyone in this team</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Members without two-factor are locked out of this team until they set it up. Turn it on after you and your teammates have set yours up.
+              </span>
+            </span>
+          </label>
         )}
         <form onSubmit={createTeam} className="mt-4 flex gap-2">
           <Input value={newTeam} onChange={(e) => setNewTeam(e.target.value)} maxLength={100} placeholder="Create another team…" aria-label="New team name" required />

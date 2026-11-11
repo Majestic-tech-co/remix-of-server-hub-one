@@ -5,6 +5,8 @@
 // Returns { userId } on success or a Response (401) on failure that the
 // caller can return directly.
 import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { logServerError, userHasMfa } from "@/lib/security.server";
 
 export async function getUserFromRequest(
   request: Request,
@@ -50,5 +52,25 @@ export async function getUserFromRequest(
       headers: { "Content-Type": "application/json" },
     });
   }
-  return { userId: data.claims.sub as string };
+  const userId = data.claims.sub as string;
+
+  // Two-factor: a user who has set it up must present an aal2 session (a code was entered).
+  // Otherwise a stolen password alone could call this API directly and skip the code prompt.
+  if ((data.claims as { aal?: string }).aal !== "aal2") {
+    try {
+      if (await userHasMfa(supabaseAdmin, userId)) {
+        return new Response(JSON.stringify({ error: "Two-factor verification required.", code: "mfa_required" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) {
+      logServerError("mfa-check", e); // fail closed: if we can't tell, don't let a password-only session through
+      return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+  return { userId };
 }

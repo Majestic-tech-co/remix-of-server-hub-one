@@ -138,23 +138,51 @@ export function roleAtLeast(role: string | null | undefined, min: WorkspaceRole)
   return !!role && Object.prototype.hasOwnProperty.call(ROLE_RANK, role) && ROLE_RANK[role as WorkspaceRole] >= ROLE_RANK[min];
 }
 
-export async function getRole(
-  admin: { from: (t: "workspace_members") => any },
-  userId: string,
-  workspaceId: string,
-): Promise<WorkspaceRole | null> {
+// ---------------------------------------------------------------------------
+// Two-factor lookups. The service role bypasses row-level security, so routes enforce the
+// same 2FA rules the database does. Answers are cached briefly to avoid an auth-API call on
+// every request; a stale answer can only delay a change by CACHE_MS.
+// ---------------------------------------------------------------------------
+type AdminLike = { from: (t: any) => any; auth: any };
+const MFA_CACHE_MS = 30_000;
+const mfaCache = new Map<string, { has: boolean; until: number }>();
+
+export function forgetMfa(userId: string): void {
+  mfaCache.delete(userId);
+}
+
+/** Does this user have a VERIFIED authenticator factor? Throws if the auth API fails (callers fail closed). */
+export async function userHasMfa(admin: AdminLike, userId: string): Promise<boolean> {
+  const hit = mfaCache.get(userId);
+  if (hit && hit.until > Date.now()) return hit.has;
+  const { data, error } = await admin.auth.admin.mfa.listFactors({ userId });
+  if (error) throw error;
+  const has = ((data?.factors ?? []) as { status: string }[]).some((f) => f.status === "verified");
+  if (mfaCache.size > 10_000) mfaCache.clear();
+  mfaCache.set(userId, { has, until: Date.now() + MFA_CACHE_MS });
+  return has;
+}
+
+/**
+ * The caller's role in a workspace, or null if they are not a member — or if the workspace requires
+ * two-factor and they have not set it up (same rule as the database's has_role()).
+ */
+export async function getRole(admin: AdminLike, userId: string, workspaceId: string): Promise<WorkspaceRole | null> {
   const { data } = await admin
     .from("workspace_members")
     .select("role")
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
     .maybeSingle();
-  return (data?.role as WorkspaceRole | undefined) ?? null;
+  if (!data?.role) return null;
+  const { data: ws } = await admin.from("workspaces").select("require_mfa").eq("id", workspaceId).maybeSingle();
+  if (ws?.require_mfa && !(await userHasMfa(admin, userId))) return null;
+  return data.role as WorkspaceRole;
 }
 
 /** Which workspace a server belongs to, and what role the caller has there. null = no such server. */
 export async function getServerAccess(
-  admin: { from: (t: any) => any },
+  admin: AdminLike,
   userId: string,
   serverId: string,
 ): Promise<{ workspaceId: string; role: WorkspaceRole | null } | null> {

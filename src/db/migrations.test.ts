@@ -42,6 +42,10 @@ async function boot(autoExpose: boolean, skipFrom?: string): Promise<PGlite> {
     GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
     GRANT SELECT ON auth.users TO service_role;
     GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
+    CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS
+      $$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+    GRANT EXECUTE ON FUNCTION auth.jwt() TO anon, authenticated, service_role;
+    CREATE TABLE auth.mfa_factors (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, status text NOT NULL);
   `);
   if (autoExpose) {
     await db.exec(`
@@ -70,7 +74,7 @@ describe.each([
   let db: PGlite;
 
   const as = async (role: Role, uid: string | null, sql: string) => {
-    await db.exec(`SET ROLE ${role}; SELECT set_config('request.jwt.claim.sub', '${uid ?? ""}', false);`);
+    await db.exec(`SET ROLE ${role}; SELECT set_config('request.jwt.claim.sub', '${uid ?? ""}', false), set_config('request.jwt.claims', '{}', false);`);
     try {
       return await db.query<Record<string, unknown>>(sql);
     } finally {
@@ -270,7 +274,7 @@ describe.each([
   it("per-user row caps stop bulk inserts", async () => {
     await expect(user(E, `INSERT INTO public.automation_tasks (user_id,workspace_id,name,script_content)
                            SELECT '${E}','${W1}','t'||g,'echo' FROM generate_series(1,501) g`)).rejects.toThrow(/row limit/i);
-  });
+  }, 60_000); // 501 rows through RLS on an in-process WebAssembly Postgres; real Postgres is far faster
 
   it("maintenance functions are not callable from the API", async () => {
     await expect(user(A, `SELECT public.purge_old_data()`)).rejects.toThrow(DENIED);
@@ -359,4 +363,95 @@ describe("teams migration upgrades existing data", () => {
     expect(seen.rows).toEqual([{ name: "s2" }]);
     await db.close();
   }, 120_000);
+});
+
+// ───────────── two-factor enforcement ─────────────
+describe("two-factor (TOTP) enforcement", () => {
+  let db: PGlite;
+  const P = "90000000-0000-0000-0000-000000000001"; // has a verified factor
+  const Q = "90000000-0000-0000-0000-000000000002"; // no factor
+  const R = "90000000-0000-0000-0000-000000000003"; // only an UNVERIFIED (half-finished) factor
+  const WA = "91000000-0000-0000-0000-00000000000a"; // normal team
+  const WB = "91000000-0000-0000-0000-00000000000b"; // team that requires 2FA
+  const SVA = "92000000-0000-0000-0000-00000000000a";
+  const SVB = "92000000-0000-0000-0000-00000000000b";
+
+  // run as a signed-in user whose session is aal1 (password only) or aal2 (code entered)
+  const asUser = async (uid: string, aal: "aal1" | "aal2", sql: string) => {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false), set_config('request.jwt.claims','{"aal":"${aal}"}',false);`);
+    try {
+      return await db.query<Record<string, unknown>>(sql);
+    } finally {
+      await db.exec("RESET ROLE");
+    }
+  };
+
+  beforeAll(async () => {
+    db = await boot(false);
+    await db.exec(`
+      INSERT INTO auth.users (id,email) VALUES ('${P}','p@t.dev'),('${Q}','q@t.dev'),('${R}','r@t.dev');
+      INSERT INTO auth.mfa_factors (user_id,status) VALUES ('${P}','verified'),('${R}','unverified');
+      SET ROLE service_role;
+      INSERT INTO public.workspaces (id,name,created_by,require_mfa) VALUES
+        ('${WA}','Normal','${P}',false),('${WB}','Strict','${P}',true);
+      INSERT INTO public.workspace_members (workspace_id,user_id,role) VALUES
+        ('${WA}','${P}','owner'),('${WA}','${Q}','member'),('${WA}','${R}','member'),
+        ('${WB}','${P}','owner'),('${WB}','${Q}','member'),('${WB}','${R}','member');
+      INSERT INTO public.servers (id,user_id,workspace_id,name,agent_token_hash) VALUES
+        ('${SVA}','${P}','${WA}','normal-srv','ha'),('${SVB}','${P}','${WB}','strict-srv','hb');
+      RESET ROLE;`);
+  }, 120_000);
+  afterAll(async () => { await db?.close(); });
+
+  const names = async (uid: string, aal: "aal1" | "aal2") =>
+    (await asUser(uid, aal, `SELECT name FROM public.servers ORDER BY name`)).rows.map((r) => r.name);
+
+  it("a user with a verified factor gets NOTHING on a password-only (aal1) session", async () => {
+    expect(await names(P, "aal1")).toEqual([]);
+    expect((await asUser(P, "aal1", `SELECT * FROM public.workspaces`)).rows).toHaveLength(0);
+    expect((await asUser(P, "aal1", `SELECT * FROM public.workspace_members`)).rows).toHaveLength(0);
+  });
+
+  it("…and cannot write either", async () => {
+    await expect(asUser(P, "aal1", `INSERT INTO public.commands (server_id,user_id,command) VALUES ('${SVA}','${P}','id')`))
+      .rejects.toThrow(DENIED);
+    expect((await asUser(P, "aal1", `UPDATE public.servers SET connection_notes='x' RETURNING id`)).rows).toHaveLength(0);
+  });
+
+  it("after entering a code (aal2) access is normal", async () => {
+    expect(await names(P, "aal2")).toEqual(["normal-srv", "strict-srv"]);
+    await asUser(P, "aal2", `INSERT INTO public.commands (server_id,user_id,command) VALUES ('${SVA}','${P}','uptime')`);
+  });
+
+  it("own-row policies (audit log, terminal sessions) are also protected", async () => {
+    expect((await asUser(P, "aal2", `SELECT * FROM public.audit_log`)).rows.length).toBeGreaterThan(0);
+    expect((await asUser(P, "aal1", `SELECT * FROM public.audit_log`)).rows).toHaveLength(0);
+  });
+
+  it("users without a verified factor are unaffected (a half-finished setup does not lock them out)", async () => {
+    expect(await names(Q, "aal1")).toEqual(["normal-srv"]);
+    expect(await names(R, "aal1")).toEqual(["normal-srv"]);
+  });
+
+  it("a team that requires 2FA hides itself from members without it, but not from members with it", async () => {
+    expect(await names(Q, "aal1")).not.toContain("strict-srv");
+    expect(await names(R, "aal1")).not.toContain("strict-srv");
+    expect(await names(P, "aal2")).toContain("strict-srv");
+  });
+
+  it("once a member verifies a factor they get into the strict team (only after entering a code)", async () => {
+    await db.exec(`INSERT INTO auth.mfa_factors (user_id,status) VALUES ('${Q}','verified')`);
+    expect(await names(Q, "aal1")).toEqual([]);                          // password only: nothing at all now
+    expect(await names(Q, "aal2")).toEqual(["normal-srv", "strict-srv"]); // with a code: both teams
+  });
+
+  it("the browser cannot flip the requirement", async () => {
+    await expect(asUser(P, "aal2", `UPDATE public.workspaces SET require_mfa=false`)).rejects.toThrow(DENIED);
+  });
+
+  it("the helper functions are not callable by signed-out users", async () => {
+    await db.exec(`SET ROLE anon`);
+    await expect(db.query(`SELECT public.mfa_ok()`)).rejects.toThrow(DENIED);
+    await db.exec(`RESET ROLE`);
+  });
 });
