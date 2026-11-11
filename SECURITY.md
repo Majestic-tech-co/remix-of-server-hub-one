@@ -20,12 +20,16 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - DB CHECK constraints are the server-side validation for direct client writes.
 
 - Agent tokens: only a SHA-256 hash is stored; the raw token is shown once (create / rotate) and the hash is not readable from the browser.
+- Rate-limit client IP uses only platform-set headers (x-vercel-forwarded-for / x-real-ip); never cf-connecting-ip unless Cloudflare is in front.
+- Per-user row caps (DB triggers) and a 200-server cap per account.
 - Retention: metrics 30d, terminal sessions 7d, commands 90d (`purge_old_data()`, pg_cron).
 
 ## Known risks
 - CSP allows `'unsafe-inline'` scripts (TanStack Start inline hydration). Move to nonces when supported.
 - In-memory rate limiter is per instance; add a WAF/Redis limiter for strict global limits.
 - The agent and terminal run as root on the target server by design.
+- Terminal input/output buffers are read-modify-write in the database (not atomic): under a race a keystroke can be lost or replayed on the owner's own server. Integrity only, no cross-account impact.
+- The install one-liner puts the token in the shell history of the machine where it is pasted; clear it afterwards (history -d) or rotate the token.
 
 ## Operator checklist
 - Apply all migrations in `supabase/migrations` in order (enable pg_cron first for the retention job). The last one, `explicit_grants`, makes the app work with Supabase's "Automatically expose new tables" turned off.

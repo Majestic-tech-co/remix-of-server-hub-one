@@ -28,8 +28,9 @@ export const Route = createFileRoute("/api/agent/command-result")({
           const data = parsed.data;
 
           const { data: cmd } = await supabaseAdmin
-            .from("commands").select("id, server_id").eq("id", data.command_id).maybeSingle();
+            .from("commands").select("id, server_id, status").eq("id", data.command_id).maybeSingle();
           if (!cmd || cmd.server_id !== auth.serverId) return errors.notFound();
+          if (cmd.status === "completed" || cmd.status === "failed") return json({ ok: true, ignored: true });
 
           const { error } = await supabaseAdmin
             .from("commands")
@@ -40,7 +41,8 @@ export const Route = createFileRoute("/api/agent/command-result")({
               stderr: data.stderr,
               completed_at: new Date().toISOString(),
             })
-            .eq("id", data.command_id);
+            .eq("id", data.command_id)
+            .in("status", ["pending", "running"]);
           if (error) { logServerError("command-result", error); return errors.server(); }
           return json({ ok: true });
         } catch (e) {

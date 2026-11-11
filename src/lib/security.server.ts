@@ -70,11 +70,18 @@ export function rateLimit(key: string, limit: number, windowMs: number): { ok: b
   return { ok: true, retryAfter: 0 };
 }
 
+/**
+ * Client IP for rate limiting. Only headers that the hosting platform itself sets and
+ * overwrites are trusted. Vercel sets x-vercel-forwarded-for / x-real-ip and replaces any
+ * client-supplied value. We deliberately do NOT trust cf-connecting-ip: with no Cloudflare
+ * proxy in front, any caller could forge it to get a fresh rate-limit bucket on every request.
+ * If you later put Cloudflare in front of the site, trust cf-connecting-ip only then.
+ */
 export function clientIp(request: Request): string {
   return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     "unknown"
   );
 }

@@ -35,6 +35,13 @@ export const Route = createFileRoute("/api/servers/create")({
           if (!parsed.success) return errors.badRequest();
           const d = parsed.data;
 
+          // Cap servers per account (service-role inserts bypass the database row-limit triggers).
+          const { count } = await supabaseAdmin
+            .from("servers")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", auth.userId);
+          if ((count ?? 0) >= 200) return json({ error: "Server limit reached." }, 403);
+
           const token = generateAgentToken();
           const { data, error } = await supabaseAdmin
             .from("servers")

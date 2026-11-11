@@ -106,9 +106,9 @@ JSON
 
 while true; do
   body=$(read_metrics)
-  curl -fsS --max-time 20 -X POST "$FLEET_URL/api/agent/metrics" \
-    -H "Content-Type: application/json" \
-    -H "X-Fleet-Token: $FLEET_TOKEN" \
+  # URL and token come from a root-only curl config file so the token never appears
+  # in the process argument list (visible to other local users via ps or /proc).
+  curl -fsS --max-time 20 -X POST -K /etc/fleet-agent.curl \
     -d "$body" >/dev/null 2>&1 || true
   sleep 60
 done
@@ -327,11 +327,19 @@ if __name__ == "__main__":
 PYAGENT
 chmod +x "$INSTALL_DIR/terminal.py"
 
+# Create secret files private from the first byte (no window where they are world-readable).
+umask 077
 cat > /etc/fleet-agent.conf <<EOF
 FLEET_URL="$FLEET_URL"
 FLEET_TOKEN="$FLEET_TOKEN"
 EOF
-chmod 600 /etc/fleet-agent.conf
+cat > /etc/fleet-agent.curl <<EOF
+url = "$FLEET_URL/api/agent/metrics"
+header = "Content-Type: application/json"
+header = "X-Fleet-Token: $FLEET_TOKEN"
+EOF
+chmod 600 /etc/fleet-agent.conf /etc/fleet-agent.curl
+umask 022
 
 # Install dependencies
 if ! command -v jq >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then

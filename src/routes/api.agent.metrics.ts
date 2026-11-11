@@ -69,20 +69,25 @@ export const Route = createFileRoute("/api/agent/metrics")({
           uptime_seconds: data.uptime_seconds ?? null,
         });
 
-        // Pick up pending commands and mark running
-        const { data: pending } = await supabaseAdmin
+        // Claim pending commands atomically. The UPDATE only matches rows that are still
+        // 'pending', so two concurrent polls can never both receive the same command.
+        const { data: candidates } = await supabaseAdmin
           .from("commands")
-          .select("id, command")
+          .select("id")
           .eq("server_id", srv.id)
           .eq("status", "pending")
           .order("created_at", { ascending: true })
           .limit(5);
 
-        if (pending && pending.length > 0) {
-          await supabaseAdmin
+        let pending: { id: string; command: string }[] = [];
+        if (candidates && candidates.length > 0) {
+          const { data: claimed } = await supabaseAdmin
             .from("commands")
             .update({ status: "running", started_at: new Date().toISOString() })
-            .in("id", pending.map((c) => c.id));
+            .in("id", candidates.map((c) => c.id))
+            .eq("status", "pending")
+            .select("id, command");
+          pending = claimed ?? [];
         }
 
         return json({ ok: true, pending_commands: pending ?? [] });

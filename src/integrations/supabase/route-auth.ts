@@ -43,5 +43,12 @@ export async function getUserFromRequest(
       headers: { "Content-Type": "application/json" },
     });
   }
+  // Reject anonymous sessions (if anonymous sign-ins are ever enabled in Supabase).
+  if ((data.claims as { is_anonymous?: boolean }).is_anonymous) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   return { userId: data.claims.sub as string };
 }
