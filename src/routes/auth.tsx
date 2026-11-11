@@ -8,6 +8,7 @@ import { Activity, Server, Terminal, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Turnstile, turnstileEnabled } from "@/components/Turnstile";
+import { Constellation } from "@/components/Constellation";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -130,30 +131,31 @@ function AuthPage() {
         <ThemeToggle />
       </div>
       {/* Left: branding panel */}
-      <div className="relative hidden flex-col justify-between border-r border-border/60 bg-card/40 p-10 lg:flex">
+      <div className="glass relative hidden flex-col justify-between overflow-hidden border-r border-border/50 p-10 lg:flex">
+        <Constellation className="pointer-events-none absolute -right-24 top-[42%] w-[100%] max-w-none -translate-y-1/2 opacity-60" />
         <div className="flex items-center gap-2.5">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-primary/15">
-            <Activity className="h-5 w-5 text-primary" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_8px_currentColor]" />
+          <div className="btn-glow relative flex h-9 w-9 items-center justify-center rounded-lg">
+            <Activity className="h-5 w-5 text-primary-foreground" />
+            <span className="status-dot absolute -right-1 -top-1 bg-success text-success" />
           </div>
-          <div className="font-mono text-base font-semibold tracking-tight">FLEET</div>
+          <div className="text-gradient font-display text-lg font-bold tracking-[0.16em]">FLEET</div>
         </div>
 
-        <div className="space-y-8">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
+        <div className="relative space-y-8">
+          <h1 className="text-5xl font-bold leading-[1.05] tracking-tight">
             Every server.
             <br />
-            <span className="text-primary">One screen.</span>
+            <span className="text-gradient">One screen.</span>
           </h1>
-          <ul className="space-y-4 text-sm text-muted-foreground">
+          <ul className="relative space-y-4 text-sm text-muted-foreground">
             <Feature icon={<Server className="h-4 w-4" />} title="Live inventory" desc="See every host, status, and resources at a glance." />
             <Feature icon={<Zap className="h-4 w-4" />} title="One-click updates" desc="Run apt/dnf upgrades across the fleet, see logs." />
             <Feature icon={<Terminal className="h-4 w-4" />} title="Remote commands" desc="Queue commands; agents execute and report back." />
           </ul>
         </div>
 
-        <div className="font-mono text-xs text-muted-foreground">
-          $ <span className="text-primary">fleet</span> status --all
+        <div className="relative font-mono text-xs text-muted-foreground">
+          $ <span className="text-gradient">fleet</span> status --all
         </div>
       </div>
 
@@ -162,14 +164,14 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/15">
-                <Activity className="h-4 w-4 text-primary" />
+              <div className="btn-glow flex h-8 w-8 items-center justify-center rounded-lg">
+                <Activity className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-mono text-sm font-semibold">FLEET</span>
+              <span className="text-gradient font-display text-base font-bold tracking-[0.16em]">FLEET</span>
             </div>
           </div>
 
-          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+          <h2 className="font-display text-3xl font-bold tracking-tight">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
 
           {notice && (

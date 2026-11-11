@@ -228,7 +228,7 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
             return (
               <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-md border border-border/50 px-3 py-2 hover:bg-muted/30">
                 <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
-                <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
+                <span className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`} />
                 <span className="flex-1 font-medium">{s.name}</span>
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{s.type}</span>
               </label>

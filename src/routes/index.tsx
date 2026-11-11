@@ -209,7 +209,7 @@ function ServerCard({
         <Link to="/servers/$id" params={{ id: server.id }} className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span
-              className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`}
+              className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`}
             />
             <h3 className="truncate font-medium">{server.name}</h3>
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">

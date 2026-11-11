@@ -176,7 +176,7 @@ function ServerDetail() {
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
+              <span className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`} />
               <h1 className="text-3xl font-semibold tracking-tight">{server.name}</h1>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 font-mono text-xs text-muted-foreground">

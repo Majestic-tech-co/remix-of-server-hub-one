@@ -32,12 +32,12 @@ function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link to="/overview" className="flex items-center gap-2.5 px-2 py-1">
-          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/15">
-            <Activity className="h-4 w-4 text-primary" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_8px_currentColor]" />
+          <div className="btn-glow relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+            <Activity className="h-4 w-4 text-primary-foreground" />
+            <span className="status-dot absolute -right-1 -top-1 bg-success text-success" />
           </div>
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-mono text-sm font-semibold tracking-tight">FLEET</span>
+            <span className="text-gradient font-display text-base font-bold tracking-[0.14em]">FLEET</span>
             <span className="font-mono text-[10px] text-muted-foreground">control center</span>
           </div>
         </Link>
@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/50 bg-background/50 px-4 backdrop-blur-2xl">
             <SidebarTrigger />
             <div className="flex items-center gap-3">
               <span className="hidden font-mono text-xs text-muted-foreground sm:inline">

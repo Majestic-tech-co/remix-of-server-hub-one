@@ -316,7 +316,7 @@ function StatusBadge({ status, online }: { status: string; online: boolean }) {
   }
   if (status === "closed") return <span className="text-muted-foreground">○ closed</span>;
   if (status === "error") return <span className="text-destructive">✗ error</span>;
-  return <span className={online ? "text-primary" : "text-destructive"}>{online ? "online" : "offline"}</span>;
+  return <span className={online ? "text-success" : "text-destructive"}>{online ? "online" : "offline"}</span>;
 }
 
 async function authHeaders(): Promise<Record<string, string>> {

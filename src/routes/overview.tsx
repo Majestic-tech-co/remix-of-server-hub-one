@@ -165,7 +165,7 @@ function Overview() {
                 <Link key={s.id} to="/servers/$id" params={{ id: s.id }}
                   className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-4 rounded-md border border-border/50 px-3 py-2 hover:border-primary/30">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className={`status-dot ${online ? "bg-primary text-primary" : "bg-destructive text-destructive"}`} />
+                    <span className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`} />
                     <span className="truncate font-medium">{s.name}</span>
                     <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{s.type}</span>
                   </div>
