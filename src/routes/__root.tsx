@@ -40,9 +40,7 @@ export const Route = createRootRoute({
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "Fleet — Server Control Center" },
       { name: "twitter:description", content: "Monitor and control all your servers from one place." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1ea7840a-2586-47cb-a098-9aafe8abda75/id-preview-f80c848a--d8c91aea-1f0e-4ec8-862d-c5a2cf79c05a.lovable.app-1777783507487.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1ea7840a-2586-47cb-a098-9aafe8abda75/id-preview-f80c848a--d8c91aea-1f0e-4ec8-862d-c5a2cf79c05a.lovable.app-1777783507487.png" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

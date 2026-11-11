@@ -22,7 +22,7 @@ export function buildSecurityHeaders(): Record<string, string> {
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https://*.r2.dev",
+    "img-src 'self' data:",
     `connect-src 'self' ${sb.http} ${sb.ws}`,
     "frame-src https://challenges.cloudflare.com",
     "frame-ancestors 'none'",
