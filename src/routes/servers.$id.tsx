@@ -3,6 +3,8 @@ import { useEffect, useState, useMemo } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { LiveTerminal } from "@/components/LiveTerminal";
+import { DesktopSshTerminal } from "@/components/DesktopSshTerminal";
+import { useDesktop } from "@/lib/desktop";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
@@ -83,6 +85,7 @@ interface MetricRow {
 function ServerDetail() {
   const { id } = useParams({ from: "/servers/$id" });
   const { current, can, setCurrent, workspaces } = useWorkspace();
+  const desktop = useDesktop(); // non-null only inside the Fleet desktop app
   const { user } = useAuth();
   const [server, setServer] = useState<ServerRow | null>(null);
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
@@ -228,6 +231,7 @@ function ServerDetail() {
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
           {can("member") && <TabsTrigger value="commands">Commands</TabsTrigger>}
+          {desktop && can("member") && <TabsTrigger value="ssh">SSH</TabsTrigger>}
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
 
@@ -334,6 +338,17 @@ function ServerDetail() {
             online={!!online}
           />
         </TabsContent>}
+
+        {desktop && can("member") && (
+          <TabsContent value="ssh" className="mt-6">
+            <DesktopSshTerminal
+              desktop={desktop}
+              serverId={server.id}
+              serverName={server.hostname || server.name}
+              defaultHost={server.ip_address || server.hostname || ""}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="info" className="mt-6">
           <InfoPanel server={server} onUpdated={(s) => setServer(s)} />

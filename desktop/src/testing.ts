@@ -6,8 +6,21 @@ import type { SecretBox } from "./store";
 export const USER = "alice";
 export const PASSWORD = "correct horse battery staple";
 
+/**
+ * Generate a test key pair. ssh2's generator occasionally (about 1 in 400) produces a passphrase-protected
+ * key that it cannot read back or even throws while generating, so verify the result and retry. This only
+ * affects tests: real keys come from ssh-keygen.
+ */
 export function newKeyPair(passphrase?: string) {
-  return utils.generateKeyPairSync("ed25519", passphrase ? { passphrase, cipher: "aes256-cbc", rounds: 16 } : undefined);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      const kp = utils.generateKeyPairSync("ed25519", passphrase ? { passphrase, cipher: "aes256-cbc", rounds: 16 } : undefined);
+      if (!(utils.parseKey(kp.private, passphrase) instanceof Error)) return kp;
+    } catch {
+      /* try again */
+    }
+  }
+  throw new Error("could not generate a readable test key");
 }
 
 export interface TestServer {
