@@ -27,6 +27,9 @@ Users can add an authenticator app on the Account page. Once a verified factor e
 - **Database:** `has_role()` / `mfa_ok()` deny any workspace data to an aal1 session of a user who has a factor, so a stolen password used straight against Supabase gets nothing.
 Teams can **require** 2FA (owner setting): members without it are locked out of that team until they set it up (database + API + a notice in the app). An owner can reset a teammate's 2FA from the Team page if they lose their authenticator (audited). There are no recovery codes: a sole owner who loses their authenticator must use the Supabase dashboard (Authentication → Users → the user → remove factor).
 
+## Desktop app (direct SSH)
+See `desktop/README.md`. SSH credentials live only on the user's computer in the OS keychain and are never sent to Fleet; the page cannot read them; host keys are pinned (trust on first use, hard stop on change); the bridge only accepts calls from the exact Fleet origin. **Direct SSH sessions bypass Fleet's roles, two-factor and audit log** — access is controlled by the SSH keys on each server. The app loads the live website, so a compromise of the site could use a user's saved connections: keep the site's own security tight.
+
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
 - Agent endpoints: per-server token, per-token and per-IP rate limits, strict zod schemas, no CORS.

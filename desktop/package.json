@@ -7,7 +7,9 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "npm run build && electron .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dist": "npm run build && npx --yes electron-builder",
+    "test": "echo \"run tests from the repository root: npm test\""
   },
   "dependencies": {
     "ssh2": "^1.17.0",
@@ -19,5 +21,32 @@
     "electron": "^45.3.0",
     "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.majestic.fleet",
+    "productName": "Fleet",
+    "files": [
+      "dist/**",
+      "package.json",
+      "node_modules/**",
+      "!node_modules/**/{test,tests,docs}/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
   }
 }

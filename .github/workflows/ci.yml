@@ -19,6 +19,11 @@ jobs:
           cache: npm
       # --legacy-peer-deps: Vite 7 / TanStack Start peer ranges conflict (see SECURITY.md notes)
       - run: npm ci --legacy-peer-deps
+      # desktop app: its tests (real in-process SSH server) run with the root suite; skip the 100 MB Electron binary
+      - run: npm ci --prefix desktop
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - run: npm run typecheck --prefix desktop
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
