@@ -62,6 +62,19 @@ describe("agent installer (install.sh)", () => {
     expect(script).not.toMatch(/conn\.close\(\)\s*\n\s*if r\.status/);
   });
 
+  it("re-installing restarts the services (a running agent would keep the old token and code)", () => {
+    expect(script).toContain("systemctl restart fleet-agent.service");
+    expect(script).toContain("systemctl restart fleet-terminal.service");
+    const commands = script.split("\n").filter((l) => !l.trim().startsWith("#")).join("\n"); // ignore comments
+    expect(commands).not.toMatch(/enable --now/);
+  });
+
+  it("swaps agent files in atomically instead of overwriting a running script", () => {
+    expect(script).toContain('mv -f "$INSTALL_DIR/agent.sh.new" "$INSTALL_DIR/agent.sh"');
+    expect(script).toContain('mv -f "$INSTALL_DIR/terminal.py.new" "$INSTALL_DIR/terminal.py"');
+    expect(script).not.toMatch(/cat > "\$INSTALL_DIR\/agent\.sh" </);
+  });
+
   it("sends request bodies via stdin, not arguments", () => {
     expect(script).toContain("--data-binary @-");
   });

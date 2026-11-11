@@ -14,7 +14,7 @@ INSTALL_DIR=/opt/fleet-agent
 mkdir -p "$INSTALL_DIR"
 
 # ----- Metrics agent (bash) ---------------------------------------------------
-cat > "$INSTALL_DIR/agent.sh" <<'AGENT'
+cat > "$INSTALL_DIR/agent.sh.new" <<'AGENT'
 #!/usr/bin/env bash
 # Fleet metrics agent — pings every 60s.
 set -uo pipefail
@@ -191,10 +191,13 @@ while true; do
   sleep 5
 done
 AGENT
-chmod +x "$INSTALL_DIR/agent.sh"
+chmod +x "$INSTALL_DIR/agent.sh.new"
+# Swap in atomically: bash reads a running script incrementally, so overwriting it in place can corrupt
+# a copy that is still running.
+mv -f "$INSTALL_DIR/agent.sh.new" "$INSTALL_DIR/agent.sh"
 
 # ----- Terminal agent (Python PTY) -------------------------------------------
-cat > "$INSTALL_DIR/terminal.py" <<'PYAGENT'
+cat > "$INSTALL_DIR/terminal.py.new" <<'PYAGENT'
 #!/usr/bin/env python3
 # Fleet terminal agent.
 # Long-polls /api/agent/terminal every ~250ms, spawning a real PTY-backed
@@ -440,7 +443,8 @@ def tick():
 if __name__ == "__main__":
     main()
 PYAGENT
-chmod +x "$INSTALL_DIR/terminal.py"
+chmod +x "$INSTALL_DIR/terminal.py.new"
+mv -f "$INSTALL_DIR/terminal.py.new" "$INSTALL_DIR/terminal.py"
 
 # Create secret files private from the first byte (no window where they are world-readable).
 umask 077
@@ -500,8 +504,12 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now fleet-agent.service
-systemctl enable --now fleet-terminal.service
+systemctl enable fleet-agent.service fleet-terminal.service >/dev/null 2>&1 || true
+# RESTART, not just start: if the agent is already running (a re-install or token rotation), `enable --now`
+# leaves the old process alive with the OLD code and the OLD token in memory. The terminal part then
+# polls with a dead token forever and the browser sits on "waiting for shell".
+systemctl restart fleet-agent.service
+systemctl restart fleet-terminal.service
 
 echo ""
 echo "✓ Fleet agent + terminal installed and running."
