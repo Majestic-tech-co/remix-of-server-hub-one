@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AutomationRouteImport } from './routes/automation'
 import { Route as OverviewRouteImport } from './routes/overview'
@@ -18,6 +19,8 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AutomationRunIdRouteImport } from './routes/automation.$runId'
 import { Route as ServersIdRouteImport } from './routes/servers.$id'
+import { Route as ApiAccountDeleteRouteImport } from './routes/api.account.delete'
+import { Route as ApiAccountExportRouteImport } from './routes/api.account.export'
 import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.command-output'
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
@@ -32,6 +35,11 @@ import { Route as ApiTerminalStartRouteImport } from './routes/api.terminal.star
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -72,6 +80,16 @@ const AutomationRunIdRoute = AutomationRunIdRouteImport.update({
 const ServersIdRoute = ServersIdRouteImport.update({
   id: '/servers/$id',
   path: '/servers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountDeleteRoute = ApiAccountDeleteRouteImport.update({
+  id: '/api/account/delete',
+  path: '/api/account/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAccountExportRoute = ApiAccountExportRouteImport.update({
+  id: '/api/account/export',
+  path: '/api/account/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAgentCommandOutputRoute = ApiAgentCommandOutputRouteImport.update({
@@ -127,6 +145,7 @@ const ApiTerminalStartRoute = ApiTerminalStartRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -135,6 +154,8 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
@@ -148,6 +169,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -156,6 +178,8 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
@@ -170,6 +194,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/auth': typeof AuthRoute
   '/automation': typeof AutomationRouteWithChildren
   '/overview': typeof OverviewRoute
@@ -178,6 +203,8 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/automation/$runId': typeof AutomationRunIdRoute
   '/servers/$id': typeof ServersIdRoute
+  '/api/account/delete': typeof ApiAccountDeleteRoute
+  '/api/account/export': typeof ApiAccountExportRoute
   '/api/agent/command-output': typeof ApiAgentCommandOutputRoute
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
@@ -193,6 +220,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -201,6 +229,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
@@ -214,6 +244,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -222,6 +253,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
@@ -235,6 +268,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/auth'
     | '/automation'
     | '/overview'
@@ -243,6 +277,8 @@ export interface FileRouteTypes {
     | '/terms'
     | '/automation/$runId'
     | '/servers/$id'
+    | '/api/account/delete'
+    | '/api/account/export'
     | '/api/agent/command-output'
     | '/api/agent/command-result'
     | '/api/agent/install'
@@ -257,6 +293,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   AuthRoute: typeof AuthRoute
   AutomationRoute: typeof AutomationRouteWithChildren
   OverviewRoute: typeof OverviewRoute
@@ -264,6 +301,8 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
   ServersIdRoute: typeof ServersIdRoute
+  ApiAccountDeleteRoute: typeof ApiAccountDeleteRoute
+  ApiAccountExportRoute: typeof ApiAccountExportRoute
   ApiAgentCommandOutputRoute: typeof ApiAgentCommandOutputRoute
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
@@ -283,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -339,6 +385,20 @@ declare module '@tanstack/react-router' {
       path: '/servers/$id'
       fullPath: '/servers/$id'
       preLoaderRoute: typeof ServersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/delete': {
+      id: '/api/account/delete'
+      path: '/api/account/delete'
+      fullPath: '/api/account/delete'
+      preLoaderRoute: typeof ApiAccountDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/account/export': {
+      id: '/api/account/export'
+      path: '/api/account/export'
+      fullPath: '/api/account/export'
+      preLoaderRoute: typeof ApiAccountExportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agent/command-output': {
@@ -428,6 +488,7 @@ const AutomationRouteWithChildren = AutomationRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   AuthRoute: AuthRoute,
   AutomationRoute: AutomationRouteWithChildren,
   OverviewRoute: OverviewRoute,
@@ -435,6 +496,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
   ServersIdRoute: ServersIdRoute,
+  ApiAccountDeleteRoute: ApiAccountDeleteRoute,
+  ApiAccountExportRoute: ApiAccountExportRoute,
   ApiAgentCommandOutputRoute: ApiAgentCommandOutputRoute,
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
   ApiAgentInstallRoute: ApiAgentInstallRoute,

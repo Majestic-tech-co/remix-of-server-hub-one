@@ -44,7 +44,7 @@ function PrivacyPage() {
       </Section>
 
       <Section title="Retention and deletion">
-        Your data is kept while your account is active. Metrics are deleted after 30 days, closed terminal sessions after 7 days and command history after 90 days. Deleting a server removes all of its data immediately. To delete your account and all associated data, contact us at the address below.
+        Your data is kept while your account is active. Metrics are deleted after 30 days, closed terminal sessions after 7 days and command history after 90 days. Deleting a server removes all of its data immediately. You can download your data or delete your account and all associated data yourself from the Account page.
       </Section>
 
       <Section title="Your rights (GDPR / UK GDPR / CCPA)">

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogOut, Server, Activity, LayoutDashboard, Play } from "lucide-react";
+import { LogOut, Server, Activity, LayoutDashboard, Play, UserCog } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -23,6 +23,7 @@ const items = [
   { title: "Overview", url: "/overview", icon: LayoutDashboard },
   { title: "Servers", url: "/", icon: Server, exact: true },
   { title: "Automation", url: "/automation", icon: Play },
+  { title: "Account", url: "/account", icon: UserCog },
 ];
 
 function AppSidebar() {
