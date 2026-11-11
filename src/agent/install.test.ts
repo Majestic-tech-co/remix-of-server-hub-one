@@ -56,6 +56,12 @@ describe("agent installer (install.sh)", () => {
     expect(py.status, py.stderr?.toString()).toBe(0);
   });
 
+  it("the terminal agent reuses one connection instead of reconnecting for every poll", () => {
+    expect(script).toContain("_conn = None");
+    expect(script).not.toMatch(/conn\s*=\s*conn_cls\([^)]*\)\s*\n\s*payload/);
+    expect(script).not.toMatch(/conn\.close\(\)\s*\n\s*if r\.status/);
+  });
+
   it("sends request bodies via stdin, not arguments", () => {
     expect(script).toContain("--data-binary @-");
   });

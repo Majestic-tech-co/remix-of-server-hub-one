@@ -570,3 +570,47 @@ describe("terminal poll functions (framing, atomicity, access)", () => {
   });
 });
 const A_USER = "a0000000-0000-0000-0000-0000000000ff";
+
+describe("terminal_agent_poll_by_hash (auth + poll in one call)", () => {
+  let db: PGlite;
+  const U2 = "b0000000-0000-0000-0000-000000000001";
+  const W2x = "b1000000-0000-0000-0000-000000000001";
+  const S2 = "b2000000-0000-0000-0000-000000000001";
+  const T2 = "b3000000-0000-0000-0000-000000000001";
+  const svc = async (sql: string) => {
+    await db.exec("SET ROLE service_role");
+    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE"); }
+  };
+
+  beforeAll(async () => {
+    db = await boot(false);
+    await db.exec(`
+      INSERT INTO auth.users (id,email) VALUES ('${U2}','z@t.dev');
+      SET ROLE service_role;
+      INSERT INTO public.workspaces (id,name,created_by) VALUES ('${W2x}','W','${U2}');
+      INSERT INTO public.workspace_members (workspace_id,user_id,role) VALUES ('${W2x}','${U2}','owner');
+      INSERT INTO public.servers (id,user_id,workspace_id,name,agent_token_hash) VALUES ('${S2}','${U2}','${W2x}','s','hash-good');
+      INSERT INTO public.terminal_sessions (id,server_id,user_id,input_buffer) VALUES ('${T2}','${S2}','${U2}','QQ==' || E'\n');
+      RESET ROLE;`);
+  }, 120_000);
+  afterAll(async () => { await db?.close(); });
+
+  it("a valid token hash polls the right server's sessions", async () => {
+    const r = (await svc(`SELECT public.terminal_agent_poll_by_hash('hash-good','{}'::jsonb,'[]'::jsonb) AS r`)).rows[0].r as { sessions: { id: string; input_b64: string }[] };
+    expect(r.sessions.map((s) => s.id)).toEqual([T2]);
+    expect(r.sessions[0].input_b64).toBe("QQ==\n");
+  });
+
+  it("an unknown token hash returns NULL and touches nothing", async () => {
+    expect((await svc(`SELECT public.terminal_agent_poll_by_hash('hash-bad','{}'::jsonb,'[]'::jsonb) AS r`)).rows[0].r).toBeNull();
+    expect((await svc(`SELECT public.terminal_agent_poll_by_hash('','{}'::jsonb,'[]'::jsonb) AS r`)).rows[0].r).toBeNull();
+  });
+
+  it("is not callable from the browser or signed-out users", async () => {
+    for (const role of ["anon", "authenticated"]) {
+      await db.exec(`SET ROLE ${role}`);
+      await expect(db.query(`SELECT public.terminal_agent_poll_by_hash('hash-good','{}'::jsonb,'[]'::jsonb)`)).rejects.toThrow(DENIED);
+      await db.exec(`RESET ROLE`);
+    }
+  });
+});

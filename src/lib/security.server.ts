@@ -252,7 +252,7 @@ export async function authenticateAgent(
   const ip = clientIp(request);
   const token = request.headers.get("x-fleet-token");
   // Throttle unauthenticated/bad-token traffic by IP first.
-  const ipCheck = rateLimit(`agent-ip:${ip}`, 600, 60_000);
+  const ipCheck = rateLimit(`agent-ip:${ip}`, 3000, 60_000);
   if (!ipCheck.ok) return errors.tooMany(ipCheck.retryAfter);
   if (!token || token.length > 128) return errors.unauthorized();
 

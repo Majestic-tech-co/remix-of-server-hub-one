@@ -226,18 +226,36 @@ last_activity = time.time()
 OUTPUT_FLUSH_BYTES = 8192
 OUTPUT_FLUSH_MS = 25      # send shell output almost immediately so typing feels live
 
-def post_json(path, body):
-    u = urlparse(FLEET_URL + path)
+_conn = None
+
+def _connect():
+    u = urlparse(FLEET_URL)
     conn_cls = HTTPSConnection if u.scheme == "https" else HTTPConnection
-    conn = conn_cls(u.hostname, u.port or (443 if u.scheme == "https" else 80), timeout=20)
+    return conn_cls(u.hostname, u.port or (443 if u.scheme == "https" else 80), timeout=20)
+
+def post_json(path, body):
+    # Reuse ONE long-lived connection. Opening a new TCP+TLS connection for every poll used to cost
+    # about half of each poll's latency. If the connection has gone stale, reconnect once and retry.
+    global _conn
+    u = urlparse(FLEET_URL + path)
     payload = json.dumps(body).encode()
-    conn.request("POST", u.path or "/", payload, {
-        "Content-Type": "application/json",
-        "X-Fleet-Token": FLEET_TOKEN,
-    })
-    r = conn.getresponse()
-    data = r.read()
-    conn.close()
+    headers = {"Content-Type": "application/json", "X-Fleet-Token": FLEET_TOKEN}
+    for attempt in (1, 2):
+        if _conn is None:
+            _conn = _connect()
+        try:
+            _conn.request("POST", u.path or "/", payload, headers)
+            r = _conn.getresponse()
+            data = r.read()
+            break
+        except Exception:
+            try:
+                _conn.close()
+            except Exception:
+                pass
+            _conn = None
+            if attempt == 2:
+                raise
     if r.status >= 400:
         raise RuntimeError(f"{r.status} {data[:200]!r}")
     return json.loads(data) if data else {}

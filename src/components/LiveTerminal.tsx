@@ -40,6 +40,8 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
   // Typing wakes the poll loop immediately (instead of waiting out its sleep) and keeps it fast for a moment.
   const wakeRef = useRef<(() => void) | null>(null);
   const fastUntilRef = useRef(0);
+  const typedAtRef = useRef(0); // when the oldest not-yet-echoed keystroke was typed
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const lastSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const [status, setStatus] = useState<"connecting" | "connected" | "closed" | "error">("connecting");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -87,6 +89,7 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
     // Outbound input → queue
     term.onData((data) => {
       pendingInputRef.current.push(enc.encode(data));
+      if (!typedAtRef.current) typedAtRef.current = performance.now();
       fastUntilRef.current = Date.now() + 1500;
       wakeRef.current?.();
     });
@@ -210,6 +213,12 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
           try { term.write(dec.decode(b64decode(part), { stream: true })); } catch { /* skip a corrupt chunk */ }
         }
         outputAckRef.current += payload.output_b64.length;
+        if (typedAtRef.current) {
+          // time from keystroke to its echo appearing: the number that matters for "does typing feel laggy"
+          const ms = Math.round(performance.now() - typedAtRef.current);
+          typedAtRef.current = 0;
+          setLatencyMs((prev) => (prev === null ? ms : Math.round(prev * 0.6 + ms * 0.4)));
+        }
       }
 
       if (payload.status === "closed") {
@@ -276,6 +285,11 @@ export function LiveTerminal({ serverId, serverName, online }: Props) {
           <TermIcon className="h-3.5 w-3.5" />
           <span>{serverName} · live shell</span>
           <StatusBadge status={status} online={online} />
+          {status === "connected" && latencyMs !== null && (
+            <span className={latencyMs > 500 ? "text-warning" : "text-muted-foreground"} title="Time from a keystroke to its echo appearing">
+              · echo {latencyMs} ms
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {(status === "closed" || status === "error") && (

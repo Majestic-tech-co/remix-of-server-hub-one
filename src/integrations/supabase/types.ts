@@ -514,6 +514,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      terminal_agent_poll_by_hash: {
+        Args: { p_hash: string; p_acks: Json; p_outputs: Json }
+        Returns: Json
+      }
       terminal_agent_poll: {
         Args: { p_server: string; p_acks: Json; p_outputs: Json }
         Returns: Json
