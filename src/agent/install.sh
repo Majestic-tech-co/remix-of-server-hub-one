@@ -104,13 +104,91 @@ read_metrics() {
 JSON
 }
 
+# ---- API helpers (token comes from the root-only curl config, never from argv) ----
+api_post() {
+  # $1 = path (may include query). JSON body is read from stdin: a command-line argument
+  # is capped at ~128KB and would also be visible to other users in ps.
+  curl -fsS --max-time 30 -X POST -K /etc/fleet-agent.curl "$FLEET_URL/api/agent/$1" --data-binary @- 2>/dev/null
+}
+
+JOBS_DIR=/var/lib/fleet-agent/jobs
+MAX_JOBS=5
+MAX_OUT=150000      # bytes of stdout / stderr kept per command
+CMD_TIMEOUT=1800    # seconds before a command is killed
+mkdir -p "$JOBS_DIR"; chmod 700 "$JOBS_DIR"
+
+# Keep the last MAX_OUT bytes of a file, NUL bytes removed (Postgres text cannot hold them).
+# Output goes through files (jq --rawfile), not arguments: a single argument is capped at ~128KB.
+prep_output() { tail -c "$MAX_OUT" "$1" 2>/dev/null | tr -d '\000' > "$2"; }
+
+post_output() {
+  # $1 = command id, $2 = job dir
+  local payload
+  prep_output "$2/out" "$2/out.t"; prep_output "$2/err" "$2/err.t"
+  payload=$(jq -n --arg id "$1" --rawfile so "$2/out.t" --rawfile se "$2/err.t"     '{command_id:$id, stdout:$so, stderr:$se}') || return 0
+  printf '%s' "$payload" | api_post command-output >/dev/null || true
+}
+
+post_result() {
+  # $1 = command id, $2 = exit code, $3 = job dir
+  local payload
+  prep_output "$3/out" "$3/out.t"; prep_output "$3/err" "$3/err.t"
+  payload=$(jq -n --arg id "$1" --argjson code "$2" --rawfile so "$3/out.t" --rawfile se "$3/err.t"     '{command_id:$id, exit_code:$code, stdout:$so, stderr:$se}') || return 0
+  # retry a few times so a brief network blip does not lose the result
+  local n
+  for n in 1 2 3 4 5; do
+    printf '%s' "$payload" | api_post command-result >/dev/null && return 0
+    sleep 3
+  done
+}
+
+run_command() {
+  # $1 = command id, $2 = command text. Runs in the background.
+  local id="$1" cmd="$2" dir pid code
+  dir=$(mktemp -d "$JOBS_DIR/job.XXXXXX") || return
+  printf '%s\n' "$cmd" > "$dir/script.sh"
+  : > "$dir/out"; : > "$dir/err"
+  ( cd / && HOME=/root timeout "$CMD_TIMEOUT" /bin/bash "$dir/script.sh" >"$dir/out" 2>"$dir/err" </dev/null; echo $? > "$dir/code" ) &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 3
+    post_output "$id" "$dir"      # live progress for the UI
+  done
+  wait "$pid" 2>/dev/null
+  code=$(cat "$dir/code" 2>/dev/null || echo 1)
+  case "$code" in ''|*[!0-9]*) code=1 ;; esac
+  post_result "$id" "$code" "$dir"
+  rm -rf "$dir"
+}
+
+handle_commands() {
+  # $1 = JSON response from the server
+  local line id cmd
+  [ -n "$1" ] || return 0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    id=$(jq -r '.id // empty' <<<"$line")
+    cmd=$(jq -r '.command // empty' <<<"$line")
+    [ -n "$id" ] && [ -n "$cmd" ] || continue
+    run_command "$id" "$cmd" &
+  done < <(jq -c '.pending_commands[]?' <<<"$1" 2>/dev/null)
+}
+
+LAST_METRICS=0
 while true; do
-  body=$(read_metrics)
-  # URL and token come from a root-only curl config file so the token never appears
-  # in the process argument list (visible to other local users via ps or /proc).
-  curl -fsS --max-time 20 -X POST -K /etc/fleet-agent.curl \
-    -d "$body" >/dev/null 2>&1 || true
-  sleep 60
+  now=$(date +%s)
+  running=$(jobs -rp | wc -l)
+  resp=""
+  if [ $((now - LAST_METRICS)) -ge 60 ]; then
+    # full report (also returns any pending commands)
+    resp=$(read_metrics | api_post metrics) || resp=""
+    LAST_METRICS=$(date +%s)
+  elif [ "$running" -lt "$MAX_JOBS" ]; then
+    # lightweight check for queued commands
+    resp=$(printf '{}' | api_post "metrics?commands_only=1") || resp=""
+  fi
+  handle_commands "$resp"
+  sleep 5
 done
 AGENT
 chmod +x "$INSTALL_DIR/agent.sh"
@@ -334,7 +412,6 @@ FLEET_URL="$FLEET_URL"
 FLEET_TOKEN="$FLEET_TOKEN"
 EOF
 cat > /etc/fleet-agent.curl <<EOF
-url = "$FLEET_URL/api/agent/metrics"
 header = "Content-Type: application/json"
 header = "X-Fleet-Token: $FLEET_TOKEN"
 EOF

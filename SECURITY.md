@@ -22,12 +22,13 @@ Third parties: Supabase (DB/auth), hosting provider, Cloudflare Turnstile (optio
 - Agent tokens: only a SHA-256 hash is stored; the raw token is shown once (create / rotate) and the hash is not readable from the browser.
 - Rate-limit client IP uses only platform-set headers (x-vercel-forwarded-for / x-real-ip); never cf-connecting-ip unless Cloudflare is in front.
 - Per-user row caps (DB triggers) and a 200-server cap per account.
+- Commands stuck running >2h (agent restart) or pending >24h are marked failed by the daily purge.
 - Retention: metrics 30d, terminal sessions 7d, commands 90d (`purge_old_data()`, pg_cron).
 
 ## Known risks
 - CSP allows `'unsafe-inline'` scripts (TanStack Start inline hydration). Move to nonces when supported.
 - In-memory rate limiter is per instance; add a WAF/Redis limiter for strict global limits.
-- The agent and terminal run as root on the target server by design.
+- The agent and terminal run as root on the target server by design. Queued commands and playbooks execute as root via `bash` (30 min timeout, max 5 at a time, output capped at 150 KB). Command text and output are stored in the database.
 - Terminal input/output buffers are read-modify-write in the database (not atomic): under a race a keystroke can be lost or replayed on the owner's own server. Integrity only, no cross-account impact.
 - The install one-liner puts the token in the shell history of the machine where it is pasted; clear it afterwards (history -d) or rotate the token.
 

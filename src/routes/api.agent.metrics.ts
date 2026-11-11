@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/agent/metrics")({
     handlers: {
       POST: async ({ request }) => {
         try {
-        const auth = await authenticateAgent(request, supabaseAdmin, { limit: 20 });
+        const auth = await authenticateAgent(request, supabaseAdmin, { limit: 40 });
         if (auth instanceof Response) return auth;
         const srv = { id: auth.serverId };
 
@@ -41,33 +41,38 @@ export const Route = createFileRoute("/api/agent/metrics")({
         if (!parsed.success) return errors.badRequest();
         const data = parsed.data;
 
+        // A commands-only poll (?commands_only=1) skips inventory + metric writes so the agent
+        // can check for work every few seconds without bloating the metrics table.
+        const commandsOnly = new URL(request.url).searchParams.get("commands_only") === "1";
+        if (!commandsOnly) {
         // Update server inventory + last_seen
-        const updates: {
-          last_seen_at: string;
-          hostname?: string;
-          ip_address?: string;
-          os?: string;
-        } = { last_seen_at: new Date().toISOString() };
-        if (data.hostname) updates.hostname = data.hostname;
-        if (data.ip) updates.ip_address = data.ip;
-        if (data.os) updates.os = data.os;
-        await supabaseAdmin.from("servers").update(updates).eq("id", srv.id);
-
-        // Insert metric
-        await supabaseAdmin.from("metrics").insert({
-          server_id: srv.id,
-          cpu_percent: data.cpu_percent ?? null,
-          memory_percent: data.memory_percent ?? null,
-          memory_used_mb: data.memory_used_mb ?? null,
-          memory_total_mb: data.memory_total_mb ?? null,
-          disk_percent: data.disk_percent ?? null,
-          disk_used_gb: data.disk_used_gb ?? null,
-          disk_total_gb: data.disk_total_gb ?? null,
-          net_rx_kbs: data.net_rx_kbs ?? null,
-          net_tx_kbs: data.net_tx_kbs ?? null,
-          load_1: data.load_1 ?? null,
-          uptime_seconds: data.uptime_seconds ?? null,
-        });
+          const updates: {
+            last_seen_at: string;
+            hostname?: string;
+            ip_address?: string;
+            os?: string;
+          } = { last_seen_at: new Date().toISOString() };
+          if (data.hostname) updates.hostname = data.hostname;
+          if (data.ip) updates.ip_address = data.ip;
+          if (data.os) updates.os = data.os;
+          await supabaseAdmin.from("servers").update(updates).eq("id", srv.id);
+  
+          // Insert metric
+          await supabaseAdmin.from("metrics").insert({
+            server_id: srv.id,
+            cpu_percent: data.cpu_percent ?? null,
+            memory_percent: data.memory_percent ?? null,
+            memory_used_mb: data.memory_used_mb ?? null,
+            memory_total_mb: data.memory_total_mb ?? null,
+            disk_percent: data.disk_percent ?? null,
+            disk_used_gb: data.disk_used_gb ?? null,
+            disk_total_gb: data.disk_total_gb ?? null,
+            net_rx_kbs: data.net_rx_kbs ?? null,
+            net_tx_kbs: data.net_tx_kbs ?? null,
+            load_1: data.load_1 ?? null,
+            uptime_seconds: data.uptime_seconds ?? null,
+          });
+        }
 
         // Claim pending commands atomically. The UPDATE only matches rows that are still
         // 'pending', so two concurrent polls can never both receive the same command.
