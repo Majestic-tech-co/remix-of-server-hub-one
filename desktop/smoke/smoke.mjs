@@ -90,7 +90,7 @@ try {
   const r = await Promise.race([gotResult, timeout]);
   const checks = [
     ["window loaded and bridge exposed", r.hasBridge === true && r.version === 1],
-    ["bridge has only the expected groups", JSON.stringify(r.bridgeKeys) === JSON.stringify(["profiles", "ssh", "version"])],
+    ["bridge has only the expected groups", JSON.stringify(r.bridgeKeys) === JSON.stringify(["appVersion", "profiles", "ssh", "version"])],
     ["page has no Node.js (require/process/Buffer)", r.typeofRequire === "undefined" && r.typeofProcess === "undefined" && r.typeofBuffer === "undefined"],
     ["page has no raw ipcRenderer/electron", r.typeofIpc === "undefined" && r.typeofElectron === "undefined"],
     ["bad input rejected generically", r.badInput && r.badInput.ok === false && r.badInput.code === "BAD_INPUT"],

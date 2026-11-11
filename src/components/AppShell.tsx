@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AlertsBell } from "@/components/AlertsBell";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useWorkspace } from "@/lib/workspace";
+import { useDesktop } from "@/lib/desktop";
 import { ShieldAlert } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const items = [
 ];
 
 function AppSidebar() {
+  const desktop = useDesktop();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <Sidebar collapsible="icon">
@@ -74,6 +76,11 @@ function AppSidebar() {
         <div className="px-2 pb-1 font-mono text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
           v2.0
         </div>
+        {!desktop && (
+          <Link to="/account" hash="desktop" className="px-2 pb-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline group-data-[collapsible=icon]:hidden">
+            Get the desktop app →
+          </Link>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

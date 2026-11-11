@@ -29,6 +29,7 @@ import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
 import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
 import { Route as ApiAgentUninstallRouteImport } from './routes/api.agent.uninstall'
+import { Route as ApiDesktopDownloadRouteImport } from './routes/api.desktop.download'
 import { Route as ApiServersCreateRouteImport } from './routes/api.servers.create'
 import { Route as ApiServersRotateTokenRouteImport } from './routes/api.servers.rotate-token'
 import { Route as ApiTeamClaimRouteImport } from './routes/api.team.claim'
@@ -139,6 +140,11 @@ const ApiAgentUninstallRoute = ApiAgentUninstallRouteImport.update({
   path: '/api/agent/uninstall',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDesktopDownloadRoute = ApiDesktopDownloadRouteImport.update({
+  id: '/api/desktop/download',
+  path: '/api/desktop/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiServersCreateRoute = ApiServersCreateRouteImport.update({
   id: '/api/servers/create',
   path: '/api/servers/create',
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
+  '/api/desktop/download': typeof ApiDesktopDownloadRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
+  '/api/desktop/download': typeof ApiDesktopDownloadRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
+  '/api/desktop/download': typeof ApiDesktopDownloadRoute
   '/api/servers/create': typeof ApiServersCreateRoute
   '/api/servers/rotate-token': typeof ApiServersRotateTokenRoute
   '/api/team/claim': typeof ApiTeamClaimRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/api/agent/metrics'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
+    | '/api/desktop/download'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/team/claim'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/api/agent/metrics'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
+    | '/api/desktop/download'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/team/claim'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/api/agent/metrics'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
+    | '/api/desktop/download'
     | '/api/servers/create'
     | '/api/servers/rotate-token'
     | '/api/team/claim'
@@ -395,6 +407,7 @@ export interface RootRouteChildren {
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
   ApiAgentTerminalRoute: typeof ApiAgentTerminalRoute
   ApiAgentUninstallRoute: typeof ApiAgentUninstallRoute
+  ApiDesktopDownloadRoute: typeof ApiDesktopDownloadRoute
   ApiServersCreateRoute: typeof ApiServersCreateRoute
   ApiServersRotateTokenRoute: typeof ApiServersRotateTokenRoute
   ApiTeamClaimRoute: typeof ApiTeamClaimRoute
@@ -548,6 +561,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentUninstallRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/desktop/download': {
+      id: '/api/desktop/download'
+      path: '/api/desktop/download'
+      fullPath: '/api/desktop/download'
+      preLoaderRoute: typeof ApiDesktopDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/servers/create': {
       id: '/api/servers/create'
       path: '/api/servers/create'
@@ -646,6 +666,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
   ApiAgentTerminalRoute: ApiAgentTerminalRoute,
   ApiAgentUninstallRoute: ApiAgentUninstallRoute,
+  ApiDesktopDownloadRoute: ApiDesktopDownloadRoute,
   ApiServersCreateRoute: ApiServersCreateRoute,
   ApiServersRotateTokenRoute: ApiServersRotateTokenRoute,
   ApiTeamClaimRoute: ApiTeamClaimRoute,

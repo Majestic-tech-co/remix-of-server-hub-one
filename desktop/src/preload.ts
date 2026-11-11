@@ -18,8 +18,11 @@ interface PublicProfile {
   trustedFingerprint: string | null;
 }
 
+const appVersion = process.argv.find((a) => a.startsWith("--fleet-app-version="))?.split("=")[1] ?? "unknown";
+
 contextBridge.exposeInMainWorld("fleetDesktop", {
-  version: 1,
+  version: 1,        // bridge API version
+  appVersion,        // installed app version, e.g. "0.1.0"
   profiles: {
     get: (serverId: string) => invoke<{ profile: PublicProfile | null }>("profiles:get", { serverId }),
     save: (input: Record<string, unknown>) => invoke<{ profile: PublicProfile | null }>("profiles:save", input),

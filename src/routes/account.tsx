@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { authedPost } from "@/lib/servers";
 import { Card } from "@/components/ui/card";
 import { TwoFactorCard } from "@/components/TwoFactorCard";
+import { DesktopAppCard } from "@/components/DesktopAppCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +79,8 @@ function Account() {
       </div>
 
       <TwoFactorCard />
+
+      <DesktopAppCard />
 
       <Card className="p-6">
         <div className="flex items-start gap-3">

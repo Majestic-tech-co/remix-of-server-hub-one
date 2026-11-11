@@ -1,0 +1,75 @@
+name: Desktop release
+
+# Builds the Windows installer and publishes it as a (private) GitHub release.
+# Make a release:   edit desktop/package.json "version", commit, then
+#                   git tag desktop-v<version> && git push origin desktop-v<version>
+# The website's "Download for Windows" button serves the newest release.
+
+on:
+  push:
+    tags: ["desktop-v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # create the release
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - run: npm ci
+
+      - name: Tag must match the app version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "app version: $VERSION"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "desktop-v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match desktop/package.json version $VERSION"
+            exit 1
+          fi
+
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: Build the installer
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          # Unsigned for now. When a code-signing certificate exists, add it as repository secrets
+          # (CSC_LINK / CSC_KEY_PASSWORD) and remove this line.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Checksums
+        shell: bash
+        run: |
+          cd release
+          sha256sum Fleet-Setup-*.exe | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fleet-windows-installer
+          path: |
+            desktop/release/Fleet-Setup-*.exe
+            desktop/release/SHA256SUMS.txt
+          retention-days: 14
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/Fleet-Setup-*.exe release/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Fleet desktop ${GITHUB_REF_NAME#desktop-v}" \
+            --notes "Windows installer for the Fleet desktop app. Unsigned: Windows may show 'Windows protected your PC' (More info, then Run anyway). Checksums are in SHA256SUMS.txt."

@@ -89,6 +89,8 @@ function createWindow() {
       allowRunningInsecureContent: false,
       spellcheck: false,
       devTools: DEV,
+      // lets the preload tell the page which app version this is (the website offers updates)
+      additionalArguments: [`--fleet-app-version=${app.getVersion()}`],
     },
   });
 

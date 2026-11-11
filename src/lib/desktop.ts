@@ -17,6 +17,8 @@ export type DesktopResult<T extends object = object> =
 
 export interface FleetDesktop {
   version: number;
+  /** Installed app version, e.g. "0.1.0". */
+  appVersion?: string;
   profiles: {
     get(serverId: string): Promise<DesktopResult<{ profile: DesktopProfile | null }>>;
     save(input: {

@@ -29,6 +29,7 @@ Teams can **require** 2FA (owner setting): members without it are locked out of 
 
 ## Desktop app (direct SSH)
 See `desktop/README.md`. SSH credentials live only on the user's computer in the OS keychain and are never sent to Fleet; the page cannot read them; host keys are pinned (trust on first use, hard stop on change); the bridge only accepts calls from the exact Fleet origin. **Direct SSH sessions bypass Fleet's roles, two-factor and audit log** — access is controlled by the SSH keys on each server. The app loads the live website, so a compromise of the site could use a user's saved connections: keep the site's own security tight.
+The installer is a private GitHub release; `/api/desktop/download` (signed-in, rate-limited, 2FA-gated like all routes) uses a read-only `GITHUB_RELEASES_TOKEN` held only in Vercel to obtain a short-lived signed link, and only hands out links on GitHub's own https hosts. Unsigned installers trigger a Windows SmartScreen warning until a code-signing certificate is added.
 
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
