@@ -31,6 +31,13 @@ Teams can **require** 2FA (owner setting): members without it are locked out of 
 See `desktop/README.md`. SSH credentials live only on the user's computer in the OS keychain and are never sent to Fleet; the page cannot read them; host keys are pinned (trust on first use, hard stop on change); the bridge only accepts calls from the exact Fleet origin. **Direct SSH sessions bypass Fleet's roles, two-factor and audit log** — access is controlled by the SSH keys on each server. The app loads the live website, so a compromise of the site could use a user's saved connections: keep the site's own security tight.
 The installer is a private GitHub release; `/api/desktop/download` (signed-in, rate-limited, 2FA-gated like all routes) uses a read-only `GITHUB_RELEASES_TOKEN` held only in Vercel to obtain a short-lived signed link, and only hands out links on GitHub's own https hosts. Unsigned installers trigger a Windows SmartScreen warning until a code-signing certificate is added.
 
+## Reducing the blast radius of the agent model
+The agent pulls commands from the site, so control of the site or database means root on every server (inherent to this design). Mitigations:
+- **Monitoring-only servers.** Admins can switch a server's *remote access* off. Enforced in the database (no commands can be queued), in `claim_commands()` (the agent is handed nothing), when the agent polls for terminals (open shells are closed), and in the API; waiting commands are cancelled and open terminals closed. Metrics and alerts keep working. Audited (`server.remote_disabled` / `server.remote_enabled`). Direct SSH from the desktop app is not covered.
+- **HTTPS only.** The installer, the metrics agent and the terminal agent all refuse a server address that isn't `https://` (plain http only for localhost development), so the token can't be sent unencrypted.
+- **Secret redaction.** The audit-log copy of every command (kept 365 days) passes through `redact_command()`, which removes passwords, tokens, API keys, `user:pass@` URLs, Authorization headers, private-key blocks and well-known token formats. Best effort: the command itself, and its output, are stored unredacted for 90 days because they have to run and be shown. Don't type secrets into commands.
+- A member can queue arbitrary commands, which run as root: treat the *member* role as root on that workspace's servers. Terminal keystrokes are not recorded (only that a session started).
+
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
 - Agent endpoints: per-server token, per-token and per-IP rate limits, strict zod schemas, no CORS.

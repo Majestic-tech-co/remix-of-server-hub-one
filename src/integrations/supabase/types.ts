@@ -273,6 +273,7 @@ export type Database = {
           name: string
           os: string | null
           region: string | null
+          remote_access: boolean
           tags: string[]
           type: string
           workspace_id: string
@@ -290,6 +291,7 @@ export type Database = {
           name: string
           os?: string | null
           region?: string | null
+          remote_access?: boolean
           tags?: string[]
           type?: string
           workspace_id: string
@@ -307,6 +309,7 @@ export type Database = {
           name?: string
           os?: string | null
           region?: string | null
+          remote_access?: boolean
           tags?: string[]
           type?: string
           workspace_id?: string
@@ -514,6 +517,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_commands: {
+        Args: { p_server: string; p_limit: number }
+        Returns: { id: string; command: string }[]
+      }
       terminal_agent_poll_by_hash: {
         Args: { p_hash: string; p_acks: Json; p_outputs: Json }
         Returns: Json

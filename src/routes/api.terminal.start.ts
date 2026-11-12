@@ -33,6 +33,7 @@ export const Route = createFileRoute("/api/terminal/start")({
         const access = await getServerAccess(supabaseAdmin, auth.userId, parsed.data.server_id);
         if (!access || !access.role) return errors.notFound();
         if (!roleAtLeast(access.role, "member")) return json({ error: "Viewers can't open terminals." }, 403);
+        if (!access.remoteAccess) return json({ error: "Remote access is turned off for this server (monitoring only)." }, 403);
         const srv = { id: parsed.data.server_id };
 
         // Close any other open sessions for this user+server (one active shell at a time)

@@ -185,10 +185,10 @@ export async function getServerAccess(
   admin: AdminLike,
   userId: string,
   serverId: string,
-): Promise<{ workspaceId: string; role: WorkspaceRole | null } | null> {
-  const { data: s } = await admin.from("servers").select("workspace_id").eq("id", serverId).maybeSingle();
+): Promise<{ workspaceId: string; role: WorkspaceRole | null; remoteAccess: boolean } | null> {
+  const { data: s } = await admin.from("servers").select("workspace_id, remote_access").eq("id", serverId).maybeSingle();
   if (!s) return null;
-  return { workspaceId: s.workspace_id as string, role: await getRole(admin, userId, s.workspace_id) };
+  return { workspaceId: s.workspace_id as string, role: await getRole(admin, userId, s.workspace_id), remoteAccess: s.remote_access !== false };
 }
 
 // Terminal polls arrive several times a second; re-checking the caller's role with 3 database queries
@@ -211,7 +211,8 @@ export async function checkTerminalAccess(admin: AdminLike, userId: string, sess
     .from("terminal_sessions").select("server_id").eq("id", sessionId).eq("user_id", userId).maybeSingle();
   if (!data?.server_id) return false;
   const access = await getServerAccess(admin, userId, data.server_id);
-  if (!roleAtLeast(access?.role, "member")) {
+  // also stops terminals on a server that has since been switched to monitoring-only
+  if (!roleAtLeast(access?.role, "member") || !access?.remoteAccess) {
     terminalAccess.delete(key);
     return false;
   }

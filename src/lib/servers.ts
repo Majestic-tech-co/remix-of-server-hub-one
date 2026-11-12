@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Columns the browser may read from `servers`. The token hash is deliberately excluded
 // (column-level privileges in the database enforce this too), so never use select("*").
 export const SERVER_COLUMNS =
-  "id,user_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes";
+  "id,user_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes,remote_access";
 
 export function buildInstallCommand(token: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";

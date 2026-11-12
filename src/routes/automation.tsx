@@ -175,13 +175,13 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
 }) {
   const { user } = useAuth();
   const { current } = useWorkspace();
-  const [servers, setServers] = useState<{ id: string; name: string; type: string; last_seen_at: string | null }[]>([]);
+  const [servers, setServers] = useState<{ id: string; name: string; type: string; last_seen_at: string | null; remote_access: boolean }[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
     if (!open || !current) return;
-    supabase.from("servers").select("id,name,type,last_seen_at").eq("workspace_id", current.id).order("name").then(({ data }) => {
+    supabase.from("servers").select("id,name,type,last_seen_at,remote_access").eq("workspace_id", current.id).order("name").then(({ data }) => {
       setServers((data ?? []) as any);
     });
   }, [open, current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -232,9 +232,10 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
             const online = !!s.last_seen_at && Date.now() - new Date(s.last_seen_at).getTime() < 90_000;
             return (
               <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-md border border-border/50 px-3 py-2 hover:bg-muted/30">
-                <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
+                <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} disabled={s.remote_access === false} />
                 <span className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`} />
                 <span className="flex-1 font-medium">{s.name}</span>
+                {s.remote_access === false && <span className="rounded bg-warning/15 px-1.5 py-0.5 font-mono text-[9px] uppercase text-warning">monitoring only</span>}
                 <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{s.type}</span>
               </label>
             );

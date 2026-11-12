@@ -8,6 +8,7 @@ import { useDesktop } from "@/lib/desktop";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ interface ServerRow {
   tags: string[];
   last_seen_at: string | null;
   connection_notes: string | null;
+  remote_access: boolean;
 }
 
 interface MetricRow {
@@ -188,6 +190,9 @@ function ServerDetail() {
             <div className="flex items-center gap-2">
               <span className={`status-dot ${online ? "bg-success text-success" : "bg-destructive text-destructive"}`} />
               <h1 className="text-3xl font-semibold tracking-tight">{server.name}</h1>
+              {server.remote_access === false && (
+                <span className="rounded bg-warning/15 px-2 py-0.5 font-mono text-[10px] uppercase text-warning">monitoring only</span>
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 font-mono text-xs text-muted-foreground">
               <span>{server.hostname || "no hostname"}</span>
@@ -230,7 +235,7 @@ function ServerDetail() {
       <Tabs defaultValue="charts">
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
-          {can("member") && <TabsTrigger value="commands">Commands</TabsTrigger>}
+          {can("member") && server.remote_access !== false && <TabsTrigger value="commands">Commands</TabsTrigger>}
           {desktop && can("member") && <TabsTrigger value="ssh">SSH</TabsTrigger>}
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
@@ -331,7 +336,7 @@ function ServerDetail() {
           </ChartCard>
         </TabsContent>
 
-        {can("member") && <TabsContent value="commands" className="mt-6">
+        {can("member") && server.remote_access !== false && <TabsContent value="commands" className="mt-6">
           <LiveTerminal
             serverId={server.id}
             serverName={server.hostname || server.name}
@@ -350,11 +355,59 @@ function ServerDetail() {
           </TabsContent>
         )}
 
-        <TabsContent value="info" className="mt-6">
+        <TabsContent value="info" className="mt-6 space-y-6">
+          <RemoteAccessSwitch server={server} onUpdated={(s) => setServer(s)} />
           <InfoPanel server={server} onUpdated={(s) => setServer(s)} />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function RemoteAccessSwitch({ server, onUpdated }: { server: ServerRow; onUpdated: (s: ServerRow) => void }) {
+  const { can } = useWorkspace();
+  const [busy, setBusy] = useState(false);
+  const on = server.remote_access !== false;
+
+  const change = async (next: boolean) => {
+    if (!next && !window.confirm(
+      "Switch this server to monitoring only?\n\nNo one will be able to run commands or open terminals on it through Fleet. " +
+      "Commands waiting to run are cancelled and open terminals are closed. Metrics and alerts keep working."
+    )) return;
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("servers")
+      .update({ remote_access: next })
+      .eq("id", server.id)
+      .select(SERVER_COLUMNS)
+      .single();
+    setBusy(false);
+    if (error) return toast.error(friendlyError(error));
+    onUpdated(data as ServerRow);
+    toast.success(next ? "Remote commands turned on." : "Server is now monitoring only.");
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold">Remote commands and terminals</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {on
+              ? "On. Members can run commands, playbooks and terminals on this server through Fleet."
+              : "Off: monitoring only. Fleet still shows metrics and alerts, but nobody can run commands or open a terminal on this server through Fleet."}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Switch it off for sensitive servers that only need watching. Direct SSH from the desktop app is separate and not controlled by this.
+            {!can("admin") && " Only admins can change it."}
+          </p>
+        </div>
+        <label className="flex shrink-0 items-center gap-2 text-sm">
+          <span className="text-muted-foreground">{on ? "On" : "Off"}</span>
+          <Switch checked={on} disabled={busy || !can("admin")} onCheckedChange={change} aria-label="Allow remote commands and terminals" />
+        </label>
+      </div>
+    </Card>
   );
 }
 

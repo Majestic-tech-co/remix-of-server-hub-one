@@ -10,6 +10,19 @@ fi
 : "${FLEET_TOKEN:?FLEET_TOKEN env var required}"
 : "${FLEET_URL:?FLEET_URL env var required}"
 
+# --- begin https-guard
+# The agent sends its secret token to this address, so it must be HTTPS. Plain HTTP is accepted only for a
+# local development server.
+case "$FLEET_URL" in
+  https://*) ;;
+  "http://localhost"|"http://localhost:"*|"http://localhost/"*|"http://127.0.0.1"|"http://127.0.0.1:"*|"http://127.0.0.1/"*|"http://[::1]"|"http://[::1]:"*|"http://[::1]/"*)
+    echo "WARNING: using plain HTTP to a local address (development only)." >&2 ;;
+  *)
+    echo "Refusing to install: FLEET_URL must start with https:// (got: $FLEET_URL). The agent's token would be sent unencrypted." >&2
+    exit 1 ;;
+esac
+# --- end https-guard
+
 INSTALL_DIR=/opt/fleet-agent
 mkdir -p "$INSTALL_DIR"
 
@@ -21,6 +34,19 @@ set -uo pipefail
 
 CFG=/etc/fleet-agent.conf
 . "$CFG"
+
+# --- begin https-guard
+# The agent sends its secret token to this address, so it must be HTTPS. Plain HTTP is accepted only for a
+# local development server.
+case "$FLEET_URL" in
+  https://*) ;;
+  "http://localhost"|"http://localhost:"*|"http://localhost/"*|"http://127.0.0.1"|"http://127.0.0.1:"*|"http://127.0.0.1/"*|"http://[::1]"|"http://[::1]:"*|"http://[::1]/"*)
+    echo "WARNING: using plain HTTP to a local address (development only)." >&2 ;;
+  *)
+    echo "fleet-agent: FLEET_URL must start with https:// (got: $FLEET_URL). The agent's token would be sent unencrypted." >&2
+    exit 1 ;;
+esac
+# --- end https-guard
 
 NET_PREV_FILE=/var/lib/fleet-agent/net_prev
 mkdir -p /var/lib/fleet-agent
@@ -220,6 +246,12 @@ with open(CFG) as f:
 
 FLEET_URL = cfg["FLEET_URL"]
 FLEET_TOKEN = cfg["FLEET_TOKEN"]
+
+# The token is sent to this address, so it must be HTTPS (plain HTTP only for a local development server).
+_u = urlparse(FLEET_URL)
+if _u.scheme != "https" and not (_u.scheme == "http" and _u.hostname in ("localhost", "127.0.0.1", "::1")):
+    print("[fleet-terminal] refusing to run: FLEET_URL must start with https://", file=sys.stderr, flush=True)
+    sys.exit(1)
 
 POLL_INTERVAL_ACTIVE = 0.05   # 50ms between polls while a session is open (cut short when the shell prints)
 POLL_INTERVAL_QUIET = 0.25    # relaxed rate while a session is open but nothing is happening

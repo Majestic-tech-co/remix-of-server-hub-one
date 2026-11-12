@@ -50,6 +50,7 @@ interface ServerRow {
   region: string | null;
   instance_id: string | null;
   tags: string[];
+  remote_access: boolean;
   last_seen_at: string | null;
   created_at: string;
 }
@@ -220,6 +221,11 @@ function ServerCard({
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">
               {server.type ?? "local"}
             </span>
+            {server.remote_access === false && (
+              <span className="rounded bg-warning/15 px-1.5 py-0.5 font-mono text-[9px] uppercase text-warning" title="Commands and terminals are turned off for this server">
+                monitoring only
+              </span>
+            )}
           </div>
           <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
             {server.hostname || server.ip_address || "no host yet"}

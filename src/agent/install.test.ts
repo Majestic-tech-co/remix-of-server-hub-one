@@ -75,6 +75,37 @@ describe("agent installer (install.sh)", () => {
     expect(script).not.toMatch(/cat > "\$INSTALL_DIR\/agent\.sh" </);
   });
 
+  describe("HTTPS-only server address", () => {
+    const guard = (src: string) => {
+      const m = /# --- begin https-guard\n([\s\S]*?)# --- end https-guard/.exec(src);
+      expect(m).toBeTruthy();
+      return m![1];
+    };
+    const run = (url: string) =>
+      spawnSync("bash", ["-c", guard(script)], { env: { ...process.env, FLEET_URL: url }, encoding: "utf8" });
+
+    it("the installer, the metrics agent and the terminal agent all enforce it", () => {
+      expect(script.match(/# --- begin https-guard/g)).toHaveLength(2); // installer + metrics agent
+      expect(script).toMatch(/_u\.scheme != "https"/);                  // terminal agent
+    });
+
+    it.skipIf(!hasBash)("accepts https and local development addresses", () => {
+      for (const ok of ["https://fleet.example.com", "https://server-hub-one.vercel.app", "http://localhost", "http://localhost:3000",
+                        "http://127.0.0.1:5173", "http://127.0.0.1/", "http://[::1]:8080"]) {
+        expect(run(ok).status, ok).toBe(0);
+      }
+    });
+
+    it.skipIf(!hasBash)("refuses plain http to anywhere else, and look-alikes", () => {
+      for (const bad of ["http://fleet.example.com", "http://localhost.evil.com", "http://127.0.0.1.evil.com", "http://localhost@evil.com",
+                         "ftp://fleet.example.com", "fleet.example.com", "HTTPS://fleet.example.com", "https", "", " https://x"]) {
+        const r = run(bad);
+        expect(r.status, JSON.stringify(bad)).toBe(1);
+        expect(r.stderr).toContain("https://");
+      }
+    });
+  });
+
   it("sends request bodies via stdin, not arguments", () => {
     expect(script).toContain("--data-binary @-");
   });

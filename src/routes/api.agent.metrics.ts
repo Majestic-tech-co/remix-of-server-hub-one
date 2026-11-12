@@ -74,26 +74,11 @@ export const Route = createFileRoute("/api/agent/metrics")({
           });
         }
 
-        // Claim pending commands atomically. The UPDATE only matches rows that are still
-        // 'pending', so two concurrent polls can never both receive the same command.
-        const { data: candidates } = await supabaseAdmin
-          .from("commands")
-          .select("id")
-          .eq("server_id", srv.id)
-          .eq("status", "pending")
-          .order("created_at", { ascending: true })
-          .limit(5);
-
-        let pending: { id: string; command: string }[] = [];
-        if (candidates && candidates.length > 0) {
-          const { data: claimed } = await supabaseAdmin
-            .from("commands")
-            .update({ status: "running", started_at: new Date().toISOString() })
-            .in("id", candidates.map((c) => c.id))
-            .eq("status", "pending")
-            .select("id, command");
-          pending = claimed ?? [];
-        }
+        // Claim pending commands: ONE atomic database call. A server switched to monitoring-only
+        // (remote_access = false) is handed nothing, no matter what is queued for it.
+        const { data: claimed, error: claimErr } = await supabaseAdmin.rpc("claim_commands", { p_server: srv.id, p_limit: 5 });
+        if (claimErr) throw claimErr;
+        const pending = (claimed ?? []) as { id: string; command: string }[];
 
         return json({ ok: true, pending_commands: pending ?? [] });
         } catch (e) {

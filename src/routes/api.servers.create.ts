@@ -20,7 +20,7 @@ const Schema = z.object({
 }).strict();
 
 const COLUMNS =
-  "id,user_id,workspace_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes";
+  "id,user_id,workspace_id,name,hostname,ip_address,os,tags,last_seen_at,created_at,type,region,instance_id,connection_notes,remote_access";
 const MAX_SERVERS = 200;
 
 export const Route = createFileRoute("/api/servers/create")({
