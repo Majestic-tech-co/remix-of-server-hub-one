@@ -17,6 +17,7 @@ import { Play, Plus, FileCode, Sparkles, Clock, CheckCircle2, XCircle, Loader2 }
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/errors";
 import { useWorkspace } from "@/lib/workspace";
+import { Schedules } from "@/components/Schedules";
 
 export const Route = createFileRoute("/automation")({
   component: () => (
@@ -106,6 +107,8 @@ function Automation() {
           ))}
         </div>
       )}
+
+      {!loading && <Schedules tasks={tasks} />}
 
       {runs.length > 0 && (
         <div>

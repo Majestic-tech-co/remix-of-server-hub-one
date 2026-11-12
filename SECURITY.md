@@ -38,6 +38,14 @@ The agent pulls commands from the site, so control of the site or database means
 - **Secret redaction.** The audit-log copy of every command (kept 365 days) passes through `redact_command()`, which removes passwords, tokens, API keys, `user:pass@` URLs, Authorization headers, private-key blocks and well-known token formats. Best effort: the command itself, and its output, are stored unredacted for 90 days because they have to run and be shown. Don't type secrets into commands.
 - A member can queue arbitrary commands, which run as root: treat the *member* role as root on that workspace's servers. Terminal keystrokes are not recorded (only that a session started).
 
+## Scheduled playbooks
+- Schedules (`playbook_schedules`) can be created, changed and deleted by team **admins** only; members can see them. A schedule runs **as the admin who last saved it**: if that person is removed or demoted below admin, the schedule disables itself (audited `schedule.disabled`) and runs nothing.
+- The engine is a database function run by pg_cron every minute (`run_due_schedules()`, not callable from the browser). It runs the playbook's **current** script, so editing a playbook changes what its schedules run; playbook create/edit/delete is therefore audited (`playbook.*`), as are schedule create/change/delete and every scheduled start (`schedule.*`).
+- Safety rails: monitoring-only and offline servers are skipped with the reason recorded; an occurrence more than 2 hours late is skipped rather than run late; a new run never starts while the previous one is still running; at most 50 schedules per team; the browser cannot set `next_run_at` or result fields.
+
+## Server details
+- The agent reports services, containers and the busiest processes about once a minute to `/api/agent/snapshot` (names and numbers only: no command lines, no environment; strict schema and size caps; one row per server, readable by team viewers and up, written only by the site). Logs are fetched on demand by queueing an ordinary command (members only, remote access on, audited like any command); unit and container names are validated before use.
+
 ## Controls
 - RLS on every table; `anon` has no privileges; child-row ownership enforced in policies.
 - Agent endpoints: per-server token, per-token and per-IP rate limits, strict zod schemas, no CORS.

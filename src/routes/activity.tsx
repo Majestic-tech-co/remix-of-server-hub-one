@@ -38,6 +38,16 @@ const ACTIONS: Record<string, string> = {
   "team.role_changed": "Role changed",
   "workspace.created": "Workspace created",
   "workspace.renamed": "Workspace renamed",
+  "playbook.created": "Playbook created",
+  "playbook.updated": "Playbook edited",
+  "playbook.deleted": "Playbook deleted",
+  "schedule.created": "Schedule created",
+  "schedule.updated": "Schedule changed",
+  "schedule.deleted": "Schedule deleted",
+  "schedule.ran": "Scheduled run started",
+  "schedule.disabled": "Schedule disabled",
+  "server.remote_enabled": "Remote access turned on",
+  "server.remote_disabled": "Remote access turned off",
 };
 
 function describe(a: AuditRow): string {

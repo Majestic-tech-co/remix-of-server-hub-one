@@ -233,7 +233,7 @@ cat > "$INSTALL_DIR/terminal.py.new" <<'PYAGENT'
 # bash for each active session. Bytes from PTY -> server (output queue),
 # bytes from server -> PTY stdin (input buffer).
 
-import base64, fcntl, json, os, pty, select, signal, struct, sys, termios, time, traceback
+import base64, fcntl, json, os, pty, select, signal, struct, subprocess, sys, termios, time, traceback
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
@@ -380,8 +380,70 @@ class Session:
 
 sessions: dict[str, Session] = {}
 
+# ---- server details snapshot --------------------------------------------------------------
+# Once a minute, in its own thread: what is running here. Names and numbers only (no command lines, no
+# environment). Every command is run with a fixed argument list and no shell.
+import shutil, threading
+SNAPSHOT_EVERY = 60
+
+def _run(args, timeout=10):
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        return r.stdout if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+def collect_snapshot():
+    services = []
+    out = _run(["systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager", "--plain"])
+    for line in out.splitlines():
+        p = line.split(None, 4)
+        if len(p) >= 4 and p[0].endswith(".service") and p[1] == "loaded" and p[2] in ("active", "failed", "activating", "reloading"):
+            services.append({"name": p[0][:-8][:128], "active": p[2][:32], "sub": p[3][:32],
+                             "description": (p[4] if len(p) > 4 else "")[:200]})
+    services.sort(key=lambda s: (s["active"] != "failed", s["name"]))
+    services = services[:300]
+
+    containers = []
+    has_docker = shutil.which("docker") is not None
+    if has_docker:
+        out = _run(["docker", "ps", "-a", "--format", "{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}"])
+        for line in out.splitlines()[:100]:
+            p = line.split("|", 3)
+            if len(p) == 4:
+                containers.append({"name": p[0][:128], "image": p[1][:200], "state": p[2][:32], "status": p[3][:100]})
+
+    processes = []
+    out = _run(["ps", "-eo", "pid=,user=,pcpu=,pmem=,comm=", "--sort=-pcpu"])
+    for line in out.splitlines()[:15]:
+        p = line.split(None, 4)
+        if len(p) == 5:
+            try:
+                processes.append({"pid": int(p[0]), "user": p[1][:64], "cpu": float(p[2]), "mem": float(p[3]), "name": p[4][:64]})
+            except ValueError:
+                pass
+    return {"services": services, "containers": containers, "processes": processes, "docker": has_docker,
+            "collected_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+
+def snapshot_loop():
+    time.sleep(5)
+    while True:
+        try:
+            body = json.dumps(collect_snapshot()).encode()
+            conn = _connect()
+            try:
+                conn.request("POST", urlparse(FLEET_URL + "/api/agent/snapshot").path, body,
+                             {"Content-Type": "application/json", "X-Fleet-Token": FLEET_TOKEN})
+                conn.getresponse().read()
+            finally:
+                conn.close()
+        except Exception as e:
+            print(f"[fleet-terminal] snapshot error: {e}", file=sys.stderr, flush=True)
+        time.sleep(SNAPSHOT_EVERY)
+
 def main():
     print("[fleet-terminal] starting", flush=True)
+    threading.Thread(target=snapshot_loop, daemon=True).start()
     while True:
         try:
             tick()

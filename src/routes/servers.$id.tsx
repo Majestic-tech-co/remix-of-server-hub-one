@@ -25,6 +25,7 @@ import { friendlyError } from "@/lib/errors";
 import { SERVER_COLUMNS, authedPost, buildInstallCommand, buildUninstallCommand } from "@/lib/servers";
 import { useWorkspace } from "@/lib/workspace";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ServerDetails } from "@/components/ServerDetails";
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, RefreshCw, Clock, Eye, EyeOff, Copy, Pencil } from "lucide-react";
 import {
   Area,
@@ -235,6 +236,7 @@ function ServerDetail() {
       <Tabs defaultValue="charts">
         <TabsList>
           <TabsTrigger value="charts">Charts</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
           {can("member") && server.remote_access !== false && <TabsTrigger value="commands">Commands</TabsTrigger>}
           {desktop && can("member") && <TabsTrigger value="ssh">SSH</TabsTrigger>}
           <TabsTrigger value="info">Info</TabsTrigger>
@@ -334,6 +336,10 @@ function ServerDetail() {
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
+        </TabsContent>
+
+        <TabsContent value="details" className="mt-6">
+          <ServerDetails serverId={server.id} canRun={can("member") && server.remote_access !== false} />
         </TabsContent>
 
         {can("member") && server.remote_access !== false && <TabsContent value="commands" className="mt-6">

@@ -43,7 +43,7 @@ describe.each([
     try {
       return await db.query<Record<string, unknown>>(sql);
     } finally {
-      await db.exec("RESET ROLE");
+      await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false)");
     }
   };
   const admin = (sql: string) => db.query<Record<string, unknown>>(sql);
@@ -141,7 +141,8 @@ describe.each([
     expect(adminSees.rows).toEqual([{ action: "command.queued", cmd: "uptime" }]);
     expect((await user(D, `SELECT * FROM public.audit_log`)).rows).toHaveLength(1);        // their own event
     expect((await user(C, `SELECT * FROM public.audit_log`)).rows).toHaveLength(0);
-    expect((await user(B, `SELECT * FROM public.audit_log`)).rows).toHaveLength(0);
+    // B (owner of the OTHER team) sees nothing of W1's log. B's own "playbook created" event is theirs to see.
+    expect((await user(B, `SELECT * FROM public.audit_log WHERE workspace_id = '${W1}'`)).rows).toHaveLength(0);
     await expect(user(E, `DELETE FROM public.audit_log`)).rejects.toThrow(DENIED);
     await expect(user(E, `INSERT INTO public.audit_log (user_id,action) VALUES ('${E}','x')`)).rejects.toThrow(DENIED);
 
@@ -433,7 +434,7 @@ describe("terminal poll functions (framing, atomicity, access)", () => {
   // the API routes call these as the service role
   const svc = async (sql: string) => {
     await db.exec("SET ROLE service_role");
-    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE"); }
+    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false)"); }
   };
   const client = async (ack: number, input: string | null, close = false, cols: number | null = null) =>
     (await svc(`SELECT * FROM public.terminal_client_poll('${SES}','${U}',${ack},${input === null ? "NULL" : `'${input}'`},${cols ?? "NULL"},NULL,${close})`)).rows[0];

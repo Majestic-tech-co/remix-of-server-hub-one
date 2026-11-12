@@ -74,7 +74,7 @@ describe("remote access switch", () => {
 
   const as = async (uid: string, sql: string) => {
     await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid}',false), set_config('request.jwt.claims','{}',false);`);
-    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE"); }
+    try { return await db.query<Record<string, unknown>>(sql); } finally { await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false)"); }
   };
   const svc = async (sql: string) => {
     await db.exec("SET ROLE service_role");

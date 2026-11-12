@@ -111,8 +111,11 @@ function RunView() {
         {logs.map((l) => {
           const cmd = l.command_id ? commands[l.command_id] : undefined;
           const srv = servers[l.server_id];
-          const status = cmd?.status ?? "pending";
-          const output = [cmd?.stdout, cmd?.stderr].filter(Boolean).join("\n") || "Waiting for agent…";
+          const skipped = !l.command_id;   // scheduled runs record why a server was skipped
+          const status = cmd?.status ?? (skipped ? "failed" : "pending");
+          const output = skipped
+            ? (l.output_log || "Skipped.")
+            : [cmd?.stdout, cmd?.stderr].filter(Boolean).join("\n") || "Waiting for agent…";
           return (
             <Card key={l.id} className="overflow-hidden">
               <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">

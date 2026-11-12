@@ -80,6 +80,81 @@ export type Database = {
         }
         Relationships: []
       }
+      playbook_schedules: {
+        Row: {
+          id: string
+          workspace_id: string
+          task_id: string
+          name: string
+          all_servers: boolean
+          server_ids: string[]
+          frequency: string
+          time_of_day: string
+          day_of_week: number | null
+          day_of_month: number | null
+          timezone: string
+          enabled: boolean
+          next_run_at: string | null
+          last_run_at: string | null
+          last_run_id: string | null
+          last_result: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          task_id: string
+          name: string
+          all_servers?: boolean
+          server_ids?: string[]
+          frequency: string
+          time_of_day?: string
+          day_of_week?: number | null
+          day_of_month?: number | null
+          timezone?: string
+          enabled?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          task_id?: string
+          name?: string
+          all_servers?: boolean
+          server_ids?: string[]
+          frequency?: string
+          time_of_day?: string
+          day_of_week?: number | null
+          day_of_month?: number | null
+          timezone?: string
+          enabled?: boolean
+          created_by?: string | null
+        }
+        Relationships: []
+      }
+      server_snapshots: {
+        Row: {
+          server_id: string
+          workspace_id: string
+          data: Json
+          updated_at: string
+        }
+        Insert: {
+          server_id: string
+          workspace_id: string
+          data: Json
+          updated_at?: string
+        }
+        Update: {
+          server_id?: string
+          workspace_id?: string
+          data?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       automation_runs: {
         Row: {
           finished_at: string | null

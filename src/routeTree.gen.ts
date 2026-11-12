@@ -27,6 +27,7 @@ import { Route as ApiAgentCommandOutputRouteImport } from './routes/api.agent.co
 import { Route as ApiAgentCommandResultRouteImport } from './routes/api.agent.command-result'
 import { Route as ApiAgentInstallRouteImport } from './routes/api.agent.install'
 import { Route as ApiAgentMetricsRouteImport } from './routes/api.agent.metrics'
+import { Route as ApiAgentSnapshotRouteImport } from './routes/api.agent.snapshot'
 import { Route as ApiAgentTerminalRouteImport } from './routes/api.agent.terminal'
 import { Route as ApiAgentUninstallRouteImport } from './routes/api.agent.uninstall'
 import { Route as ApiDesktopDownloadRouteImport } from './routes/api.desktop.download'
@@ -130,6 +131,11 @@ const ApiAgentMetricsRoute = ApiAgentMetricsRouteImport.update({
   path: '/api/agent/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentSnapshotRoute = ApiAgentSnapshotRouteImport.update({
+  id: '/api/agent/snapshot',
+  path: '/api/agent/snapshot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentTerminalRoute = ApiAgentTerminalRouteImport.update({
   id: '/api/agent/terminal',
   path: '/api/agent/terminal',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/snapshot': typeof ApiAgentSnapshotRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/desktop/download': typeof ApiDesktopDownloadRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/snapshot': typeof ApiAgentSnapshotRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/desktop/download': typeof ApiDesktopDownloadRoute
@@ -275,6 +283,7 @@ export interface FileRoutesById {
   '/api/agent/command-result': typeof ApiAgentCommandResultRoute
   '/api/agent/install': typeof ApiAgentInstallRoute
   '/api/agent/metrics': typeof ApiAgentMetricsRoute
+  '/api/agent/snapshot': typeof ApiAgentSnapshotRoute
   '/api/agent/terminal': typeof ApiAgentTerminalRoute
   '/api/agent/uninstall': typeof ApiAgentUninstallRoute
   '/api/desktop/download': typeof ApiDesktopDownloadRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/snapshot'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
     | '/api/desktop/download'
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/snapshot'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
     | '/api/desktop/download'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/api/agent/command-result'
     | '/api/agent/install'
     | '/api/agent/metrics'
+    | '/api/agent/snapshot'
     | '/api/agent/terminal'
     | '/api/agent/uninstall'
     | '/api/desktop/download'
@@ -405,6 +417,7 @@ export interface RootRouteChildren {
   ApiAgentCommandResultRoute: typeof ApiAgentCommandResultRoute
   ApiAgentInstallRoute: typeof ApiAgentInstallRoute
   ApiAgentMetricsRoute: typeof ApiAgentMetricsRoute
+  ApiAgentSnapshotRoute: typeof ApiAgentSnapshotRoute
   ApiAgentTerminalRoute: typeof ApiAgentTerminalRoute
   ApiAgentUninstallRoute: typeof ApiAgentUninstallRoute
   ApiDesktopDownloadRoute: typeof ApiDesktopDownloadRoute
@@ -547,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/snapshot': {
+      id: '/api/agent/snapshot'
+      path: '/api/agent/snapshot'
+      fullPath: '/api/agent/snapshot'
+      preLoaderRoute: typeof ApiAgentSnapshotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent/terminal': {
       id: '/api/agent/terminal'
       path: '/api/agent/terminal'
@@ -664,6 +684,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentCommandResultRoute: ApiAgentCommandResultRoute,
   ApiAgentInstallRoute: ApiAgentInstallRoute,
   ApiAgentMetricsRoute: ApiAgentMetricsRoute,
+  ApiAgentSnapshotRoute: ApiAgentSnapshotRoute,
   ApiAgentTerminalRoute: ApiAgentTerminalRoute,
   ApiAgentUninstallRoute: ApiAgentUninstallRoute,
   ApiDesktopDownloadRoute: ApiDesktopDownloadRoute,
