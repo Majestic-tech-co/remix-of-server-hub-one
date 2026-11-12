@@ -48,13 +48,15 @@ function RunView() {
       setLogs(ls);
 
       const cmdIds = ls.map((x) => x.command_id).filter(Boolean) as string[];
+      // NOTE: use this local copy below, not the `commands` state. This effect only re-runs when user/runId
+      // change, so `commands` inside it is frozen at its initial empty value (that was the "stuck in running" bug).
+      const cmdMap: Record<string, Command> = {};
       const srvIds = ls.map((x) => x.server_id);
       if (cmdIds.length) {
         const { data: cs } = await supabase.from("commands")
           .select("id,status,exit_code,stdout,stderr").in("id", cmdIds);
-        const map: Record<string, Command> = {};
-        for (const c of (cs ?? []) as Command[]) map[c.id] = c;
-        setCommands(map);
+        for (const c of (cs ?? []) as Command[]) cmdMap[c.id] = c;
+        setCommands(cmdMap);
       }
       if (srvIds.length) {
         const { data: ss } = await supabase.from("servers").select("id,name").in("id", srvIds);
@@ -64,14 +66,15 @@ function RunView() {
       }
 
       // roll up run status
-      if (r && r.status === "running" && ls.length) {
+      // (the database also does this the moment a command finishes; this is just the quick path while watching)
+      if (r && r.status === "running" && ls.length && ls.length >= (r.target_count ?? ls.length)) {
         const allDone = ls.every((x) => {
-          const c = x.command_id ? commands[x.command_id] : null;
+          const c = x.command_id ? cmdMap[x.command_id] : null;
           return c && (c.status === "completed" || c.status === "failed");
         });
         if (allDone) {
           const anyFailed = ls.some((x) => {
-            const c = x.command_id ? commands[x.command_id] : null;
+            const c = x.command_id ? cmdMap[x.command_id] : null;
             return c?.status === "failed" || (c?.exit_code ?? 0) !== 0;
           });
           await supabase.from("automation_runs").update({

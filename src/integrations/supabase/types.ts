@@ -86,6 +86,7 @@ export type Database = {
           id: string
           started_at: string
           status: string
+          target_count: number | null
           task_id: string
           workspace_id: string
           user_id: string | null
@@ -95,6 +96,7 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          target_count?: number | null
           task_id: string
           workspace_id: string
           user_id?: string | null
@@ -104,6 +106,7 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          target_count?: number | null
           task_id?: string
           workspace_id?: string
           user_id?: string | null

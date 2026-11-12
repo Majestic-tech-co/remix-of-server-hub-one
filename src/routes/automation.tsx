@@ -196,7 +196,7 @@ function RunDialog({ open, onOpenChange, task, onRan }: {
     if (!user || !current || selected.size === 0) return;
     setRunning(true);
     const { data: run, error: runErr } = await supabase.from("automation_runs")
-      .insert({ user_id: user.id, workspace_id: current.id, task_id: task.id, status: "running" })
+      .insert({ user_id: user.id, workspace_id: current.id, task_id: task.id, status: "running", target_count: selected.size })
       .select().single();
     if (runErr || !run) { toast.error(friendlyError(runErr)); setRunning(false); return; }
 

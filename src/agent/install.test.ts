@@ -106,6 +106,12 @@ describe("agent installer (install.sh)", () => {
     });
   });
 
+  it("runs remote commands non-interactively (an apt prompt must never hang a run)", () => {
+    expect(script).toContain("DEBIAN_FRONTEND=noninteractive");
+    expect(script).toContain("NEEDRESTART_MODE=a");
+    expect(script).toMatch(/<\/dev\/null; echo \$\? > "\$dir\/code"/); // no terminal input either
+  });
+
   it("sends request bodies via stdin, not arguments", () => {
     expect(script).toContain("--data-binary @-");
   });

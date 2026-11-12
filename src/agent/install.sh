@@ -174,7 +174,10 @@ run_command() {
   dir=$(mktemp -d "$JOBS_DIR/job.XXXXXX") || return
   printf '%s\n' "$cmd" > "$dir/script.sh"
   : > "$dir/out"; : > "$dir/err"
-  ( cd / && HOME=/root timeout "$CMD_TIMEOUT" /bin/bash "$dir/script.sh" >"$dir/out" 2>"$dir/err" </dev/null; echo $? > "$dir/code" ) &
+  # There is no keyboard on the other end: tell package tools never to wait for an answer to a prompt
+  # (apt/dpkg configuration questions, needrestart dialogs), or an "apt upgrade" can sit there forever.
+  ( cd / && HOME=/root DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a APT_LISTCHANGES_FRONTEND=none \
+      timeout "$CMD_TIMEOUT" /bin/bash "$dir/script.sh" >"$dir/out" 2>"$dir/err" </dev/null; echo $? > "$dir/code" ) &
   pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     sleep 3
